@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: c0ceea3170ebaca40b64c2630442a89d
+timeCreated: 1540229349
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 131438
+  packageName: Low Poly Office Props - LITE
+  packageVersion: 1.1
+  assetPath: Assets/LowPolyOfficeProps_LITE/Prefabs/Chair_Conference_Teal.prefab
+  uploadId: 277417

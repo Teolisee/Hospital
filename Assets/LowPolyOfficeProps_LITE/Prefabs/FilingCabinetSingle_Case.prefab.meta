@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: a4827c3c34b766743b61c499b08e4c75
+timeCreated: 1540229383
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 131438
+  packageName: Low Poly Office Props - LITE
+  packageVersion: 1.1
+  assetPath: Assets/LowPolyOfficeProps_LITE/Prefabs/FilingCabinetSingle_Case.prefab
+  uploadId: 277417

@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: a76d0962e5aaba2479107524e448f23d
+timeCreated: 1540229421
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 131438
+  packageName: Low Poly Office Props - LITE
+  packageVersion: 1.1
+  assetPath: Assets/LowPolyOfficeProps_LITE/Prefabs/Tablet.prefab
+  uploadId: 277417
