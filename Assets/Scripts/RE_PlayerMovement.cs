@@ -1,97 +1,202 @@
-using UnityEngine; // Caja de herramientas físicas de Unity
-using UnityEngine.InputSystem; // Sistema para detectar el Teclado
+using UnityEngine;
+using UnityEngine.InputSystem;
 
 // -----------------------------------------------------------------------------
 // SCRIPT: RE_PlayerMovement
-// METÁFORA: "Las Piernas del Jugador"
-// Versión ultra simplificada: Solo caminar en la dirección de la cámara.
+// METÁFORA: "Las Piernas y el Motor del Jugador"
+// Controla el movimiento en 3ª persona: caminar, correr, saltar, gravedad,
+// rotación suave en base a la cámara y sincronización con el Animator.
 // -----------------------------------------------------------------------------
-[RequireComponent(typeof(CharacterController))] // Obliga a Unity a ponerle un cilindro físico invisible al jugador para que no atraviese paredes.
+[RequireComponent(typeof(CharacterController))]
 public class RE_PlayerMovement : MonoBehaviour 
 {
-    [Header("Movimiento Básico")]
-    [Tooltip("Velocidad de movimiento al caminar.")]
-    public float walkSpeed = 6.0f; // Qué tan rápido camina.
-    
+    [Header("Velocidades de Movimiento")]
+    [Tooltip("Velocidad normal al caminar.")]
+    public float walkSpeed = 5.0f;
+
+    [Tooltip("Velocidad al correr (manteniendo Shift).")]
+    public float sprintSpeed = 8.5f;
+
+    [Tooltip("Suavizado de aceleración/desaceleración.")]
+    public float speedSmoothTime = 0.1f;
+
+    [Header("Salto y Gravedad")]
+    [Tooltip("Altura máxima que alcanza el salto en metros.")]
+    public float jumpHeight = 1.2f;
+
+    [Tooltip("Fuerza de gravedad hacia abajo.")]
+    public float gravity = -20.0f;
+
     [Header("Cámara y Orientación")]
-    [Tooltip("Referencia a la cámara principal.")]
-    public Transform cameraTransform; // Los ojos del jugador. Necesitamos saber para dónde mira.
-    
-    [Tooltip("Velocidad con la que el personaje rota su cuerpo al girar.")]
-    public float rotationSpeed = 10.0f; // Qué tan suave voltea la espalda al cambiar de dirección.
+    [Tooltip("Referencia a la cámara principal para orientar el movimiento.")]
+    public Transform cameraTransform;
 
-    private CharacterController controller; // El cilindro físico invisible que moveremos.
+    [Tooltip("Velocidad con la que el personaje gira hacia la dirección de movimiento.")]
+    public float rotationSpeed = 12.0f;
 
-    void Start() 
+    [Header("Animación (Opcional)")]
+    [Tooltip("Componente Animator del modelo 3D (se detecta automáticamente si está vacío).")]
+    public Animator animator;
+
+    [Tooltip("Nombre del parámetro Float en el Animator para controlar la velocidad (ej: 'Speed').")]
+    public string speedParameterName = "Speed";
+
+    // Componentes internos
+    private CharacterController controller;
+    private float currentSpeed;
+    private float speedSmoothVelocity;
+    private Vector3 verticalVelocity; // Maneja la gravedad y el salto
+    private bool isGrounded;
+
+    private void Start() 
     {
-        // Al nacer, nos conectamos a nuestro propio cilindro invisible.
+        // 1. Obtenemos el CharacterController del jugador
         controller = GetComponent<CharacterController>(); 
 
-        // Si se nos olvidó conectar la cámara en el inspector, la busca automáticamente.
-        if (cameraTransform == null && Camera.main != null) cameraTransform = Camera.main.transform;
+        // 2. Si no asignamos la cámara en el Inspector, buscamos la cámara principal automáticamente
+        if (cameraTransform == null && Camera.main != null)
+        {
+            cameraTransform = Camera.main.transform;
+        }
+
+        // 3. Si no asignamos el Animator, lo buscamos en este objeto o en los hijos (donde suele estar el modelo 3D)
+        if (animator == null)
+        {
+            animator = GetComponent<Animator>();
+            if (animator == null) animator = GetComponentInChildren<Animator>();
+        }
     }
 
-    void Update() // Se ejecuta todo el tiempo, como los reflejos del cerebro
+    private void Update() 
     {
         // ---------------------------------------------------------
-        // PASO 1: PREGUNTAR QUÉ TECLAS ESTÁN PRESIONADAS (W, A, S, D)
+        // PASO 1: DETECTAR SI ESTAMOS TOCANDO EL PISO
         // ---------------------------------------------------------
-        float horizontalInput = 0f; // Eje X: Derecha (1) o Izquierda (-1)
-        float verticalInput = 0f; // Eje Z: Adelante (1) o Atrás (-1)
+        isGrounded = controller.isGrounded;
 
+        // Si estamos en el suelo y caíamos, mantenemos una pequeña fuerza hacia abajo para pegarnos a rampas y escalones
+        if (isGrounded && verticalVelocity.y < 0)
+        {
+            verticalVelocity.y = -2f;
+        }
+
+        // ---------------------------------------------------------
+        // PASO 2: LEER ENTRADAS DEL JUGADOR (Teclado y Gamepad)
+        // ---------------------------------------------------------
+        float horizontalInput = 0f;
+        float verticalInput = 0f;
+        bool isSprinting = false;
+        bool jumpPressed = false;
+
+        // Soporte Teclado (Nuevo Input System)
         if (Keyboard.current != null)
         {
-            if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) horizontalInput = 1f; 
-            if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed) horizontalInput = -1f;
+            if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) horizontalInput += 1f; 
+            if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed) horizontalInput -= 1f;
 
-            if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed) verticalInput = 1f;
-            if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed) verticalInput = -1f;
+            if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed) verticalInput += 1f;
+            if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed) verticalInput -= 1f;
+
+            if (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed) isSprinting = true;
+            if (Keyboard.current.spaceKey.wasPressedThisFrame) jumpPressed = true;
         }
 
+        // Soporte Mando / Gamepad
+        if (Gamepad.current != null)
+        {
+            Vector2 stick = Gamepad.current.leftStick.ReadValue();
+            horizontalInput += stick.x;
+            verticalInput += stick.y;
+
+            if (Gamepad.current.leftStickButton.isPressed || Gamepad.current.rightShoulder.isPressed) isSprinting = true;
+            if (Gamepad.current.buttonSouth.wasPressedThisFrame) jumpPressed = true;
+        }
+
+        // Vector de entrada plano en 2D
+        Vector2 inputVector = new Vector2(horizontalInput, verticalInput);
+        if (inputVector.magnitude > 1f) inputVector.Normalize();
+
         // ---------------------------------------------------------
-        // PASO 2: TRADUCIR LAS TECLAS A LA DIRECCIÓN DE LA CÁMARA
+        // PASO 3: TRADUCIR LA DIRECCIÓN SEGÚN LA CÁMARA
         // ---------------------------------------------------------
-        Vector3 moveDirection = Vector3.zero; // Inicializamos una flecha sin dirección.
-        
+        Vector3 moveDirection = Vector3.zero;
+
         if (cameraTransform != null)
         {
-            Vector3 camForward = cameraTransform.forward; // El frente de la cámara
-            Vector3 camRight = cameraTransform.right; // La derecha de la cámara
-            
-            camForward.y = 0f; // Ignoramos la altura. Si miramos al cielo, no queremos volar.
-            camRight.y = 0f; 
-            camForward.Normalize(); // Aplanamos la matemática a una medida exacta de 1.
+            Vector3 camForward = cameraTransform.forward;
+            Vector3 camRight = cameraTransform.right;
+
+            camForward.y = 0f;
+            camRight.y = 0f;
+            camForward.Normalize();
             camRight.Normalize();
 
-            // Mezclamos la dirección de la cámara con las teclas que presionamos.
-            moveDirection = camRight * horizontalInput + camForward * verticalInput;
-            
-            // "Normalize" evita que caminar en diagonal (W + D) sea más rápido matemáticamente que caminar recto.
-            if (moveDirection.magnitude > 1f) moveDirection.Normalize(); 
+            moveDirection = (camRight * inputVector.x) + (camForward * inputVector.y);
+        }
+        else
+        {
+            moveDirection = new Vector3(inputVector.x, 0f, inputVector.y);
         }
 
         // ---------------------------------------------------------
-        // PASO 3: GIRAR EL CUERPO DEL MUÑECO 3D (Modelo)
+        // PASO 4: CALCULAR VELOCIDAD Y SUAVIZADO
         // ---------------------------------------------------------
-        if (moveDirection.magnitude > 0.1f) // Si nos estamos moviendo...
+        float targetSpeed = 0f;
+        if (inputVector.magnitude > 0.05f)
         {
-            // Calcula matemáticamente el ángulo hacia el que debemos voltear.
-            Quaternion targetRotation = Quaternion.LookRotation(moveDirection); 
-            // "Slerp" hace que el muñeco gire poco a poco de forma suave, en vez de darse la vuelta bruscamente de golpe.
+            targetSpeed = isSprinting ? sprintSpeed : walkSpeed;
+        }
+
+        currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, speedSmoothTime);
+
+        // ---------------------------------------------------------
+        // PASO 5: ROTACIÓN SUAVE DEL PERSONAJE
+        // ---------------------------------------------------------
+        if (moveDirection.sqrMagnitude > 0.001f)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
 
         // ---------------------------------------------------------
-        // PASO 4: CAMINAR FÍSICAMENTE (Mover el cilindro)
+        // PASO 6: SALTO Y GRAVEDAD
         // ---------------------------------------------------------
-        // Creamos una gravedad constante y simple hacia abajo (-9.81) para que el jugador nunca flote en el aire al bajar escaleras.
-        Vector3 gravityForce = Vector3.down * 9.81f;
-        
-        // Juntamos el empuje hacia adelante (caminar) con el empuje hacia abajo (gravedad).
-        Vector3 finalMovement = (moveDirection * walkSpeed) + gravityForce;
+        if (jumpPressed && isGrounded)
+        {
+            // Fórmula física del salto: v = sqrt(h * -2 * g)
+            verticalVelocity.y = Mathf.Sqrt(jumpHeight * -2.0f * gravity);
+        }
 
-        // Le damos la orden final al cilindro invisible: "¡Muévete y cuidado con las paredes!"
-        // Multiplicamos por Time.deltaTime para que la velocidad sea idéntica en cualquier PC (rápida o lenta).
-        controller.Move(finalMovement * Time.deltaTime);
+        // Aplicamos gravedad continuamente
+        verticalVelocity.y += gravity * Time.deltaTime;
+
+        // ---------------------------------------------------------
+        // PASO 7: MOVER EL CHARACTER CONTROLLER
+        // ---------------------------------------------------------
+        Vector3 horizontalMovement = moveDirection.normalized * currentSpeed;
+        Vector3 totalMovement = horizontalMovement + verticalVelocity;
+
+        controller.Move(totalMovement * Time.deltaTime);
+
+        // ---------------------------------------------------------
+        // PASO 8: ACTUALIZAR EL ANIMATOR
+        // ---------------------------------------------------------
+        if (animator != null)
+        {
+            // Enviamos la magnitud de velocidad actual al parámetro "Speed" del Animator
+            float normalizedSpeed = currentSpeed / (walkSpeed > 0 ? walkSpeed : 1f);
+            animator.SetFloat(speedParameterName, normalizedSpeed, 0.1f, Time.deltaTime);
+        }
+    }
+
+    private void OnDisable()
+    {
+        // Al pausar o desactivar el movimiento (ej: al hablar con un NPC),
+        // reseteamos la velocidad en el Animator para que no se quede caminando en el sitio.
+        currentSpeed = 0f;
+        if (animator != null)
+        {
+            animator.SetFloat(speedParameterName, 0f);
+        }
     }
 }
