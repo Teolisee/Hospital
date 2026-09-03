@@ -5,85 +5,165 @@ using TMPro; // Textos bonitos y nítidos.
 // -----------------------------------------------------------------------------
 // SCRIPT: RE_NPCInteraction
 // METÁFORA: "El Libreto de los Actores"
-// Este script está metido adentro de todos los NPCs (Guardia, Civil, Enfermero).
+// Este script está metido adentro de todos los NPCs (Guardia, Civil, Enfermero, Recepcionista).
 // Contiene lo que te van a decir, sabe cuándo callarse, y sabe cuándo es hora 
-// de firmar el documento para que pases de nivel (La Recepcionista).
+// de registrar el progreso y finalizar el nivel (La Recepcionista).
 // -----------------------------------------------------------------------------
 public class RE_NPCInteraction : MonoBehaviour, IInteractable 
 {
     [Header("Configuración de NPC")]
     [Tooltip("El mensaje que aparecerá al acercarse al NPC.")]
-    public string promptText = "Presiona E para hablar"; // Letrero flotante que el jugador ve.
+    public string promptText = "Presiona E para hablar";
 
-    [Tooltip("ID único para registrar esta conversación en el progreso.")]
-    public string npcId; // La cédula de identidad del NPC. Para saber si es Juan o Pedro.
+    [Tooltip("ID único para registrar esta conversación en el progreso. Si está vacío, se usa el nombre del GameObject.")]
+    public string npcId;
 
     [Header("Contenido del Diálogo")]
     [Tooltip("El nombre del NPC que se mostrará en la interfaz.")]
-    public string npcName; // Su nombre en los subtítulos.
+    public string npcName;
 
     [Tooltip("El texto del diálogo que dirá el NPC.")]
-    [TextArea(3, 10)] // Obliga a Unity a pintar una caja de texto grande en el Inspector (como un bloc de notas).
-    public string npcDialogue; // Su parlamento o guión.
+    [TextArea(3, 10)]
+    public string npcDialogue;
+
+    [Header("Configuración de Flujo y Orden")]
+    [Tooltip("Si está activo, obliga a hablar en orden estricto (Guardia -> Civil -> Enfermero). Por defecto está desactivado para libertad de exploración.")]
+    public bool requiereOrdenSecuencial = false;
 
     [Header("Configuración de Facturación (Recepción/Fin de Nivel)")]
     [Tooltip("Si está activo, este NPC actuará como el punto de facturación que completa el nivel.")]
-    public bool esNPCFacturacion = false; // Interruptor: Falso = NPC normal. Verdadero = NPC Jefe (El que termina el juego).
+    public bool esNPCFacturacion = false;
 
     [Tooltip("Mensaje que muestra si intentas facturar pero te faltan tareas por completar.")]
     [TextArea(3, 5)] 
-    public string mensajeTareasPendientes = "Aún no puedes facturar. Habla con los demás primero."; // El texto de regaño si haces trampa.
+    public string mensajeTareasPendientes = "Aún no puedes facturar. Habla con los demás primero.";
 
     [Header("Referencias de UI")]
     [Tooltip("El objeto/Canvas que contiene los diálogos del NPC.")]
-    public GameObject npcDialogosCanvas; // El papel gigante frente a la cámara que tiene dibujada la caja de texto.
+    public GameObject npcDialogosCanvas;
 
     [Tooltip("El botón para continuar/salir del diálogo.")]
-    public Button botonContinuar; // El botón físico para apretar.
+    public Button botonContinuar;
 
-    private bool puedeFacturar = false; // Bandera de estado temporal: ¿Cumpliste las misiones para ganar?
+    private bool puedeFacturar = false;
 
-    private void Start() // Cuando el NPC aparece en el mapa (Nace)...
+    private void Start()
     {
-        // Si se nos olvidó escribir la cédula (ID), el código toma el nombre del modelo 3D y se lo pone.
-        if (string.IsNullOrEmpty(npcId)) npcId = gameObject.name;
+        // 1. Si no se especificó un ID manual, usamos el nombre del GameObject
+        if (string.IsNullOrEmpty(npcId)) 
+        {
+            npcId = gameObject.name;
+        }
 
-        // TRAMPA INTELIGENTE: Si el NPC tiene la palabra "recepcionista" en su nombre, se auto-convierte en el NPC Final automáticamente.
-        if (gameObject.name.ToLower().Contains("recepcionista") || npcId.ToLower().Contains("recepcionista"))
+        string lowerName = gameObject.name.ToLower();
+        string lowerId = (npcId ?? "").ToLower();
+
+        // 2. Detección automática de Recepcionista / Facturación por nombre
+        if (lowerName.Contains("recepcionista") || 
+            lowerName.Contains("facturacion") || 
+            lowerId.Contains("recepcionista") ||
+            lowerId.Contains("facturacion"))
         {
             esNPCFacturacion = true; 
         }
 
+        // 3. Garantizar que este NPC tenga un Collider para que el jugador lo detecte
+        Collider col = GetComponent<Collider>();
+        if (col == null) col = GetComponentInChildren<Collider>();
+        if (col == null)
+        {
+            CapsuleCollider newCap = gameObject.AddComponent<CapsuleCollider>();
+            newCap.radius = 0.6f;
+            newCap.height = 2.0f;
+            newCap.center = new Vector3(0, 1.0f, 0);
+        }
+
+        // 4. Auto-detección del Canvas de Diálogo si no fue arrastrado en el Inspector
+        if (npcDialogosCanvas == null)
+        {
+            if (lowerName.Contains("civil") || lowerId.Contains("civil") || lowerName.Contains("bot"))
+            {
+                npcDialogosCanvas = BuscarCanvasPorNombre("civil");
+            }
+            else if (lowerName.Contains("guardia") || lowerId.Contains("guardia"))
+            {
+                npcDialogosCanvas = BuscarCanvasPorNombre("guardia");
+            }
+            else if (lowerName.Contains("enfermer") || lowerId.Contains("enfermer"))
+            {
+                npcDialogosCanvas = BuscarCanvasPorNombre("enfermer");
+            }
+            else if (lowerName.Contains("recepcion") || lowerId.Contains("recepcion"))
+            {
+                npcDialogosCanvas = BuscarCanvasPorNombre("recepcion");
+            }
+        }
+
+        // 5. Configuración del Canvas encontrado
         if (npcDialogosCanvas != null) 
         {
-            npcDialogosCanvas.SetActive(false); // Ocultamos el telón visual de inmediato para que no flote un cuadro gigante negro.
+            npcDialogosCanvas.SetActive(false); 
 
-            // Si olvidamos arrastrar el botón "Continuar" al inspector, él busca un botón automáticamente entre sus hijos.
+            // Buscar botón Continuar dentro de su propio canvas
             if (botonContinuar == null || !botonContinuar.transform.IsChildOf(npcDialogosCanvas.transform))
             {
                 Button foundBtn = npcDialogosCanvas.GetComponentInChildren<Button>(true); 
                 if (foundBtn != null) botonContinuar = foundBtn; 
             }
 
-            // REGLA SUPREMA: Siempre borramos lo que haya en el Inspector y chupamos el texto visualmente escrito en el propio Canvas.
-            // Esto evita que clones/copias conserven diálogos antiguos del guardia.
-            npcName = GetExistingNameFromCanvas();
-            if (string.IsNullOrEmpty(npcName)) npcName = gameObject.name.Replace("Npc", "").Trim(); // Si el nombre está en blanco, usa el nombre del modelo 3D limpiándole la palabra "Npc".
+            // Asignar nombre si está vacío
+            if (string.IsNullOrEmpty(npcName))
+            {
+                npcName = GetExistingNameFromCanvas();
+                if (string.IsNullOrEmpty(npcName))
+                {
+                    npcName = gameObject.name.Replace("Npc", "").Replace("NPC", "").Trim();
+                }
+            }
 
-            npcDialogue = GetExistingDialogueFromCanvas();
+            // Asignar diálogo si está vacío
+            if (string.IsNullOrEmpty(npcDialogue))
+            {
+                npcDialogue = GetExistingDialogueFromCanvas();
+            }
         }
 
-        // Le atamos un hilo al botón de continuar. Al hacerle clic, disparará la orden "CerrarDialogo()".
+        // 6. Conectar evento del botón Continuar de forma segura
         if (botonContinuar != null)
         {
+            botonContinuar.onClick.RemoveListener(CerrarDialogo);
             botonContinuar.onClick.AddListener(CerrarDialogo);
         }
+    }
+
+    private GameObject BuscarCanvasPorNombre(string keyword)
+    {
+        foreach (Canvas c in Resources.FindObjectsOfTypeAll<Canvas>())
+        {
+            if (c.hideFlags == HideFlags.None && c.gameObject.name.ToLower().Contains(keyword.ToLower()))
+            {
+                return c.gameObject;
+            }
+        }
+        return null;
     }
 
     // Parte del contrato "IInteractable". Devolvemos el letrero flotante que el jugador leerá.
     public string GetInteractPrompt()
     {
-        return promptText;
+        if (!string.IsNullOrEmpty(promptText))
+        {
+            bool isGuardiaObj = gameObject.name.ToLower().Contains("guardia") || (npcId ?? "").ToLower().Contains("guardia");
+            bool promptHasGuardia = promptText.ToLower().Contains("guardia");
+
+            if (isGuardiaObj || !promptHasGuardia)
+            {
+                return promptText;
+            }
+        }
+
+        string nombreMostrar = !string.IsNullOrEmpty(npcName) ? npcName : gameObject.name.Replace("Npc", "").Replace("NPC", "").Trim();
+        return $"Presiona E para hablar con {nombreMostrar}";
     }
 
     // Parte del contrato "IInteractable". Se acciona cuando el jugador aprieta la tecla E sobre nosotros.
@@ -92,146 +172,173 @@ public class RE_NPCInteraction : MonoBehaviour, IInteractable
         AbrirDialogo(); 
     }
 
-    // METÁFORA: "La Charla". Congela el mundo y abre la boca del personaje.
+    // METÁFORA: "La Charla". Congela el movimiento y muestra el cuadro de diálogo.
     private void AbrirDialogo() 
     {
         if (npcDialogosCanvas != null) 
         {
-            // SI ESTE NPC ES EL REVISOR FINAL (Recepcionista)
             if (esNPCFacturacion) 
             {
-                // Contamos cuántos chulos/checks tiene la libreta del alcalde (GameProgress).
                 int tareasCompletadas = RE_GameProgress.Instance != null ? RE_GameProgress.Instance.progressData.completedTasks.Count : 0;
                 
-                // Si la misión de la recepcionista ya está marcada, la restamos de las matemáticas para no engañar el cálculo.
-                if (RE_GameProgress.Instance != null && RE_GameProgress.Instance.IsTaskCompleted(npcId)) tareasCompletadas--;
-
-                // Si hay 4 NPCs en total en el juego, restamos 1 (la recepcionista misma) = Tenemos que haber hablado con 3.
-                int tareasRequeridas = RE_GameProgress.Instance != null ? RE_GameProgress.Instance.totalMainTasks - 1 : 3;
-
-                if (tareasCompletadas >= tareasRequeridas) // Si 3 es mayor o igual a 3 (¡Las hicimos todas!)...
+                if (RE_GameProgress.Instance != null && RE_GameProgress.Instance.IsTaskCompleted(npcId))
                 {
-                    puedeFacturar = true; // Levantamos el pulgar.
-                    UpdateDialogueTexts(npcName, npcDialogue); // Inyectamos su saludo de victoria en la pantalla.
+                    tareasCompletadas--;
                 }
-                else // Si intentamos saltarnos a un NPC...
+
+                int tareasRequeridas = RE_GameProgress.Instance != null ? (RE_GameProgress.Instance.totalMainTasks - 1) : 3;
+                if (tareasRequeridas < 1) tareasRequeridas = 1;
+
+                if (tareasCompletadas >= tareasRequeridas)
                 {
-                    puedeFacturar = false; // Bajamos el pulgar.
-                    UpdateDialogueTexts(npcName, mensajeTareasPendientes); // Inyectamos el texto del regaño en la pantalla.
+                    puedeFacturar = true;
+                    UpdateDialogueTexts(npcName, npcDialogue);
+                }
+                else
+                {
+                    puedeFacturar = false;
+                    string textoAviso = !string.IsNullOrEmpty(mensajeTareasPendientes) 
+                        ? mensajeTareasPendientes 
+                        : $"Aún no puedes facturar. Llevas {tareasCompletadas} de {tareasRequeridas} tareas completadas.";
+                    UpdateDialogueTexts(npcName, textoAviso);
                 }
             }
-            // SI ES UN NPC NORMAL Y CORRIENTE
             else 
             {
-                UpdateDialogueTexts(npcName, npcDialogue); // Simplemente inyectamos lo que tienen que decir.
+                UpdateDialogueTexts(npcName, npcDialogue);
             }
 
-            npcDialogosCanvas.SetActive(true); // Encendemos el panel gigante de la conversación.
+            npcDialogosCanvas.SetActive(true);
             
-            // Liberamos al puntero del ratón para que haga clic en el botón.
             Cursor.lockState = CursorLockMode.None; 
             Cursor.visible = true; 
 
-            // Si es un nivel contra reloj, "Zapeamos" al reloj para que se ponga en pausa mientras leemos (O el jugador morirá charlando).
             if (RE_PlayerHealth.Instance != null) RE_PlayerHealth.Instance.SetPaused(true);
 
-            // Buscamos al jugador por la ropa (El script PlayerMovement) y lo inmovilizamos, apagándole los motores.
             RE_PlayerMovement pm = FindFirstObjectByType<RE_PlayerMovement>();
             if (pm != null) pm.enabled = false;
         }
+        else
+        {
+            // Si por alguna razón no hay canvas, registramos el progreso para no atascar al jugador
+            RegistrarProgresoNPC();
+        }
     }
 
-    // Se ejecuta al hacer clic en el botón de pantalla.
+    // Se ejecuta al hacer clic en el botón Continuar de la UI.
     public void CerrarDialogo() 
     {
-        if (npcDialogosCanvas != null && npcDialogosCanvas.activeSelf) // Si de verdad estaba abierto...
+        if (npcDialogosCanvas != null && npcDialogosCanvas.activeSelf)
         {
-            npcDialogosCanvas.SetActive(false); // Bajamos el telón y lo escondemos.
+            npcDialogosCanvas.SetActive(false); 
             
-            // Volvemos a encerrar al ratón en el centro para seguir jugando FPS/TPS.
             Cursor.lockState = CursorLockMode.Locked; 
             Cursor.visible = false; 
 
-            // Le quitamos la pausa al cronómetro de la muerte.
             if (RE_PlayerHealth.Instance != null) RE_PlayerHealth.Instance.SetPaused(false);
 
-            // Le devolvemos las piernas al jugador.
             RE_PlayerMovement pm = FindFirstObjectByType<RE_PlayerMovement>();
             if (pm != null) pm.enabled = true;
 
-            // -------------------------------------------------------------
-            // LÓGICA TRAS BASTIDORES: Procesar qué pasa DESPUÉS de la charla.
-            // -------------------------------------------------------------
-            if (esNPCFacturacion) // Si era el NPC Final...
-            {
-                if (puedeFacturar) // Y además de ser el NPC Final, le habíamos levantado el pulgar arriba...
-                {
-                    if (RE_GameProgress.Instance != null) RE_GameProgress.Instance.CompleteTask(npcId); // Ponle un chulo a la recepcionista.
-                    if (RE_LevelComplete.Instance != null) RE_LevelComplete.Instance.TriggerLevelComplete(); // Llama al Juez del Nivel para que tire confeti.
-                }
-            }
-            else // Si era un NPC común de historia (Guardia, Civil, Enfermero)...
+            RegistrarProgresoNPC();
+        }
+    }
+
+    private void RegistrarProgresoNPC()
+    {
+        if (esNPCFacturacion)
+        {
+            if (puedeFacturar)
             {
                 if (RE_GameProgress.Instance != null)
                 {
-                    bool canComplete = true; // Por ahora, asumimos que hicimos las cosas bien.
-                    
-                    // Pasamos su nombre a minúsculas para que el computador no se confunda entre "Civil" y "CIVIL".
+                    RE_GameProgress.Instance.CompleteTask(npcId);
+                }
+                if (RE_LevelComplete.Instance != null)
+                {
+                    RE_LevelComplete.Instance.TriggerLevelComplete();
+                }
+            }
+            else
+            {
+                Debug.Log($"[RE_NPCInteraction] Recepción: Aún faltan tareas pendientes antes de facturar.");
+            }
+        }
+        else
+        {
+            if (RE_GameProgress.Instance != null)
+            {
+                bool canComplete = true;
+
+                if (requiereOrdenSecuencial)
+                {
                     string lowerName = gameObject.name.ToLower();
                     string lowerId = (npcId ?? "").ToLower();
 
                     bool isCivil = lowerName.Contains("civil") || lowerId.Contains("civil");
                     bool isEnfermero = lowerName.Contains("enfermero") || lowerId.Contains("enfermero");
 
-                    // REGLAS ESPECÍFICAS DE TU HISTORIA: 
-                    // Si hablo con el civil... ¡Espero que ya hayas hablado con el guardia!
                     if (isCivil) canComplete = RE_GameProgress.Instance.IsGuardiaCompleted();
-                    // Si hablo con el enfermero... ¡Espero que ya hayas hablado con el civil!
                     else if (isEnfermero) canComplete = RE_GameProgress.Instance.IsCivilCompleted();
+                }
 
-                    if (canComplete) // Si fuiste un buen chico y seguiste el orden...
-                    {
-                        RE_GameProgress.Instance.CompleteTask(npcId); // Márcate un chulo en la libreta.
-                    }
-                    else // Si fuiste directo al enfermero saltándote la historia...
-                    {
-                        // Anotamos en el registro secreto que no le valemos la misión.
-                        Debug.Log($"[RE_NPCInteraction] Tarea no completada para {npcId} por no seguir el orden.");
-                    }
+                if (canComplete)
+                {
+                    RE_GameProgress.Instance.CompleteTask(npcId);
+                    Debug.Log($"[RE_NPCInteraction] Tarea completada con éxito para NPC: '{npcId}' ({npcName})");
+                }
+                else
+                {
+                    Debug.LogWarning($"[RE_NPCInteraction] Tarea no completada para '{npcId}' porque 'requiereOrdenSecuencial' está activo y no se cumplió el orden.");
                 }
             }
         }
     }
 
-    // -----------------------------------------------------------------------------------------
-    // FUNCIONES MÁGICAS AUXILIARES 
-    // Su único propósito es coger tus textos y literalmente escribirlos dentro de los cuadritos de Unity.
-    // -----------------------------------------------------------------------------------------
     private void UpdateDialogueTexts(string title, string content) 
     {
         if (npcDialogosCanvas == null) return; 
 
-        // Escanea a todos los Hijos y Nietos visuales del Canvas buscando cualquier texto "TextMeshProUGUI".
         TextMeshProUGUI[] tmproTexts = npcDialogosCanvas.GetComponentsInChildren<TextMeshProUGUI>(true);
         foreach (var txt in tmproTexts)
         {
-            // ¿Cómo se llama ese cuadrito? (ej: "Texto Nombre guardia" o "Textos npc")
             string objName = txt.gameObject.name.ToLower();
             
-            // Si el cuadrito se llama "nombre", o "title"... le inyectamos en la vena la variable 'title' (Que es tu npcName).
-            if (objName.Contains("nombre") || objName.Contains("title") || objName.Contains("name")) txt.text = title; 
-            
-            // Si el cuadrito se llama "texto", o "cuerpo"... le inyectamos en la vena el parlamento (Tu npcDialogue).
-            else if (objName.Contains("texto") || objName.Contains("dialog") || objName.Contains("cuerpo") || objName.Contains("content")) txt.text = content; 
+            if (objName.Contains("nombre") || objName.Contains("title") || objName.Contains("name"))
+            {
+                if (!string.IsNullOrEmpty(title)) txt.text = title;
+            }
+            else if (objName.Contains("texto") || objName.Contains("dialog") || objName.Contains("cuerpo") || objName.Contains("content"))
+            {
+                if (!string.IsNullOrEmpty(content)) txt.text = content;
+            }
+        }
+
+        Text[] legacyTexts = npcDialogosCanvas.GetComponentsInChildren<Text>(true);
+        foreach (var txt in legacyTexts)
+        {
+            string objName = txt.gameObject.name.ToLower();
+            if (objName.Contains("nombre") || objName.Contains("title") || objName.Contains("name"))
+            {
+                if (!string.IsNullOrEmpty(title)) txt.text = title;
+            }
+            else if (objName.Contains("texto") || objName.Contains("dialog") || objName.Contains("cuerpo") || objName.Contains("content"))
+            {
+                if (!string.IsNullOrEmpty(content)) txt.text = content;
+            }
         }
     }
 
     private string GetExistingNameFromCanvas() 
     {
         if (npcDialogosCanvas == null) return null;
-        // Revisa todos los textos buscando el que sea el título, y lo "roba" para devolvértelo.
         foreach (var txt in npcDialogosCanvas.GetComponentsInChildren<TextMeshProUGUI>(true))
-            if (txt.gameObject.name.ToLower().Contains("nombre") || txt.gameObject.name.ToLower().Contains("title")) return txt.text;
+        {
+            if (txt.gameObject.name.ToLower().Contains("nombre") || txt.gameObject.name.ToLower().Contains("title"))
+            {
+                if (!string.IsNullOrEmpty(txt.text)) return txt.text;
+            }
+        }
         return null;
     }
 
@@ -241,18 +348,20 @@ public class RE_NPCInteraction : MonoBehaviour, IInteractable
         foreach (var txt in npcDialogosCanvas.GetComponentsInChildren<TextMeshProUGUI>(true))
         {
             string objName = txt.gameObject.name.ToLower();
-            // ¡Peligro! Ignora el texto del nombre para no confundirlo con el diálogo.
             if (objName.Contains("nombre") || objName.Contains("title") || objName.Contains("name")) continue; 
-            
-            // Si encontró algo parecido al diálogo... "Róbatelo" y devuélvemelo en crudo.
-            if (objName.Contains("texto") || objName.Contains("dialog") || objName.Contains("cuerpo") || objName.Contains("content")) return txt.text;
+            if (objName.Contains("texto") || objName.Contains("dialog") || objName.Contains("cuerpo") || objName.Contains("content"))
+            {
+                if (!string.IsNullOrEmpty(txt.text)) return txt.text;
+            }
         }
         return null;
     }
 
     private void OnDestroy() 
     {
-        // Limpiamos los hilos invisibles del botón si pasamos de nivel, para evitar errores fantasmas.
-        if (botonContinuar != null) botonContinuar.onClick.RemoveListener(CerrarDialogo);
+        if (botonContinuar != null)
+        {
+            botonContinuar.onClick.RemoveListener(CerrarDialogo);
+        }
     }
 }

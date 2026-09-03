@@ -101,6 +101,16 @@ public class RE_PlayerMovement : MonoBehaviour
             if (Keyboard.current.spaceKey.wasPressedThisFrame) jumpPressed = true;
         }
 
+        // Soporte Legacy Input (Fallback de seguridad)
+        try
+        {
+            if (horizontalInput == 0f) horizontalInput = Input.GetAxisRaw("Horizontal");
+            if (verticalInput == 0f) verticalInput = Input.GetAxisRaw("Vertical");
+            if (!isSprinting && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))) isSprinting = true;
+            if (!jumpPressed && Input.GetKeyDown(KeyCode.Space)) jumpPressed = true;
+        }
+        catch { }
+
         // Soporte Mando / Gamepad
         if (Gamepad.current != null)
         {
