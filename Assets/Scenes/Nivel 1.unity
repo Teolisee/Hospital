@@ -3073,7 +3073,6 @@ GameObject:
   - component: {fileID: 198146591}
   - component: {fileID: 198146590}
   - component: {fileID: 198146589}
-  - component: {fileID: 198146593}
   m_Layer: 0
   m_Name: Npc recepcionista
   m_TagString: Untagged
@@ -3114,11 +3113,12 @@ MonoBehaviour:
   npcId: 
   npcName: 
   npcDialogue: Aqui pagas Chamito
+  requiereOrdenSecuencial: 0
   esNPCFacturacion: 0
   mensajeTareasPendientes: "A\xFAn no puedes facturar tu cita. Primero debes hablar
     con el Guardia, el Enfermero y el Civil."
   npcDialogosCanvas: {fileID: 2129917982}
-  botonContinuar: {fileID: 958148011}
+  botonContinuar: {fileID: 1749322934}
 --- !u!136 &198146590
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -3195,27 +3195,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 198146587}
   m_Mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
---- !u!114 &198146593
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 198146587}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3fe50dd60919a39468188a413479242a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  promptText: Presiona E para hablar con el Guardia
-  npcId: 
-  npcName: 
-  npcDialogue: 
-  esNPCFacturacion: 0
-  mensajeTareasPendientes: "A\xFAn no puedes facturar tu cita. Primero debes hablar
-    con el Guardia, el Enfermero y el Civil."
-  npcDialogosCanvas: {fileID: 0}
-  botonContinuar: {fileID: 0}
 --- !u!1001 &199046849
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4393,6 +4372,7 @@ MonoBehaviour:
   npcId: 
   npcName: 
   npcDialogue: 
+  requiereOrdenSecuencial: 0
   esNPCFacturacion: 0
   mensajeTareasPendientes: "A\xFAn no puedes facturar tu cita. Primero debes hablar
     con el Guardia, el Enfermero y el Civil."
@@ -14522,7 +14502,7 @@ Transform:
   m_GameObject: {fileID: 611922317}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.63, y: -18.983404, z: -6.12}
+  m_LocalPosition: {x: -1.843, y: -18.983404, z: -0.871}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -14622,6 +14602,7 @@ MonoBehaviour:
   npcId: 
   npcName: 
   npcDialogue: hola
+  requiereOrdenSecuencial: 0
   esNPCFacturacion: 0
   mensajeTareasPendientes: "A\xFAn no puedes facturar tu cita. Primero debes hablar
     con el Guardia, el Enfermero y el Civil."
@@ -15775,7 +15756,7 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 691438475}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -15.83}
+  m_LocalPosition: {x: 0, y: 0, z: -0.15}
   m_LocalScale: {x: 0.001, y: 0.001, z: 0.001}
   m_ConstrainProportionsScale: 1
   m_Children:
@@ -15784,7 +15765,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 12.48494, y: 1.425}
+  m_AnchoredPosition: {x: 0, y: 1.425}
   m_SizeDelta: {x: 1920, y: 1080}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &691438477
@@ -23353,10 +23334,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5623a0ed39859464fb3b63c68cd7f11e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sphereRadius: 2
+  sphereRadius: 3.5
   interactableMask:
     serializedVersion: 2
-    m_Bits: 1
+    m_Bits: 4294967295
+  promptUIObject: {fileID: 0}
+  promptUIText: {fileID: 0}
+  mostrarIndicadorEnPantalla: 1
 --- !u!114 &1028009979
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -25115,7 +25099,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1248066069131407785, guid: b97a930929a95154b85d0742ab015eb9, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -1.2131053
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1248066069131407785, guid: b97a930929a95154b85d0742ab015eb9, type: 3}
       propertyPath: m_LocalPosition.y
@@ -25123,7 +25107,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1248066069131407785, guid: b97a930929a95154b85d0742ab015eb9, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 5.2486525
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1248066069131407785, guid: b97a930929a95154b85d0742ab015eb9, type: 3}
       propertyPath: m_LocalRotation.w
@@ -33218,6 +33202,7 @@ MonoBehaviour:
   npcId: 
   npcName: 
   npcDialogue: 
+  requiereOrdenSecuencial: 0
   esNPCFacturacion: 0
   mensajeTareasPendientes: "A\xFAn no puedes facturar tu cita. Primero debes hablar
     con el Guardia, el Enfermero y el Civil."
@@ -37311,6 +37296,75 @@ Light:
   m_LightUnit: 1
   m_LuxAtDistance: 1
   m_EnableSpotReflector: 1
+--- !u!1001 &1651320743
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 8927944398dfe7349988f100ff7b2db5, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.2887
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8927944398dfe7349988f100ff7b2db5, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.2887
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8927944398dfe7349988f100ff7b2db5, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.2887
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8927944398dfe7349988f100ff7b2db5, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -25.021
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8927944398dfe7349988f100ff7b2db5, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.02
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8927944398dfe7349988f100ff7b2db5, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 47.994
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8927944398dfe7349988f100ff7b2db5, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.69339037
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8927944398dfe7349988f100ff7b2db5, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8927944398dfe7349988f100ff7b2db5, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.7205622
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8927944398dfe7349988f100ff7b2db5, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8927944398dfe7349988f100ff7b2db5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8927944398dfe7349988f100ff7b2db5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -92.202
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8927944398dfe7349988f100ff7b2db5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 8927944398dfe7349988f100ff7b2db5, type: 3}
+      propertyPath: m_Name
+      value: Ch16_nonPBR
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 8927944398dfe7349988f100ff7b2db5, type: 3}
 --- !u!1001 &1651772815
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -41260,7 +41314,6 @@ GameObject:
   - component: {fileID: 1830452045}
   - component: {fileID: 1830452044}
   - component: {fileID: 1830452043}
-  - component: {fileID: 1830452047}
   - component: {fileID: 1830452048}
   m_Layer: 0
   m_Name: Npc bot
@@ -41288,7 +41341,7 @@ BoxCollider:
   m_ProvidesContacts: 1
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
+  m_Size: {x: 1.5, y: 2, z: 1.5}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!23 &1830452044
 MeshRenderer:
@@ -41297,7 +41350,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1830452042}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -41353,23 +41406,11 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 6.44, y: 1.54, z: -2.96}
-  m_LocalScale: {x: 0.93487585, y: 0.6998621, z: 0.877977}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1830452047
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1830452042}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8bfa7e43d23128045bc6568efaf2ae2d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &1830452048
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -41379,11 +41420,19 @@ MonoBehaviour:
   m_GameObject: {fileID: 1830452042}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2f7e33af69991064d80e0d0d7c2c8b7d, type: 3}
+  m_Script: {fileID: 11500000, guid: 3fe50dd60919a39468188a413479242a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  interactionDistance: 3
-  customMessage: "\xA1Has interactuado con este objeto correctamente!"
+  promptText: Presiona E para hablar con el Civil
+  npcId: Npc Civil
+  npcName: Civil
+  npcDialogue: Hola, vine por una consulta de rutina.
+  requiereOrdenSecuencial: 0
+  esNPCFacturacion: 0
+  mensajeTareasPendientes: "A\xFAn no puedes facturar tu cita. Primero debes hablar
+    con el Guardia, el Enfermero y el Civil."
+  npcDialogosCanvas: {fileID: 2035004422}
+  botonContinuar: {fileID: 1789542102}
 --- !u!1001 &1833892714
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -46952,3 +47001,4 @@ SceneRoots:
   - {fileID: 1101100765}
   - {fileID: 1953468266}
   - {fileID: 630443730}
+  - {fileID: 1651320743}
