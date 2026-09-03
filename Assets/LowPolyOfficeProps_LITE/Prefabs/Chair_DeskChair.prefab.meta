@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 813aadab227158e46897ad49dc9b8dbd
+timeCreated: 1541497833
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 131438
+  packageName: Low Poly Office Props - LITE
+  packageVersion: 1.1
+  assetPath: Assets/LowPolyOfficeProps_LITE/Prefabs/Chair_DeskChair.prefab
+  uploadId: 277417
