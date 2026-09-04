@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: fbef12b796f48df43a7823a7858346e8
+timeCreated: 1466755314
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 65817
+  packageName: Morgue Room PBR
+  packageVersion: 1.0
+  assetPath: Assets/Morgue Room PBR/Prefabs/props/table.prefab
+  uploadId: 448714

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 3929ad56bed972f45964b19cb68d5c45
+timeCreated: 1465956809
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 65817
+  packageName: Morgue Room PBR
+  packageVersion: 1.0
+  assetPath: Assets/Morgue Room PBR/Prefabs/walls/wall_corner01.prefab
+  uploadId: 448714

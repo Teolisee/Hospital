@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: ea376580ff13fe64a894f43129bb9b2f
+timeCreated: 1466392240
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 65817
+  packageName: Morgue Room PBR
+  packageVersion: 1.0
+  assetPath: Assets/Morgue Room PBR/Models/floor/Decals/drain_mat.mat
+  uploadId: 448714
