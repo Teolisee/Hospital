@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 0a55260e7bd4a3340940f01c15e730c5
+timeCreated: 1466606649
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 65817
+  packageName: Morgue Room PBR
+  packageVersion: 1.0
+  assetPath: Assets/Morgue Room PBR/Models/props/Materials/glass_jar_mat.mat
+  uploadId: 448714

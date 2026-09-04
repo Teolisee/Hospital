@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 0ce69b79c4dd2a14ba6f4427c8436e59
+timeCreated: 1465956197
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 65817
+  packageName: Morgue Room PBR
+  packageVersion: 1.0
+  assetPath: Assets/Morgue Room PBR/Prefabs/floor/floor_ceiling_4x16.prefab
+  uploadId: 448714

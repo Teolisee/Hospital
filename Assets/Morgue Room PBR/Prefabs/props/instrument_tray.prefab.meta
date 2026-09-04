@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: f590c878ed049d94397214b04738d983
+timeCreated: 1466040191
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 65817
+  packageName: Morgue Room PBR
+  packageVersion: 1.0
+  assetPath: Assets/Morgue Room PBR/Prefabs/props/instrument_tray.prefab
+  uploadId: 448714

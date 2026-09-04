@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 188af353c4ca8674f8b83d0570eab3e5
+timeCreated: 1465956828
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 65817
+  packageName: Morgue Room PBR
+  packageVersion: 1.0
+  assetPath: Assets/Morgue Room PBR/Prefabs/walls/doubledoor_frame01.prefab
+  uploadId: 448714
