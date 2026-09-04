@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: cfc18c935482f834ab23dced70927e8b
+timeCreated: 1465763131
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 65817
+  packageName: Morgue Room PBR
+  packageVersion: 1.0
+  assetPath: Assets/Morgue Room PBR/Models/props/Materials/level_objects2_mat.mat
+  uploadId: 448714

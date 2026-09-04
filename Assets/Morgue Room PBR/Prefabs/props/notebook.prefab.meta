@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 92794c55695387544b0181380f46d6ec
+timeCreated: 1466821790
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 65817
+  packageName: Morgue Room PBR
+  packageVersion: 1.0
+  assetPath: Assets/Morgue Room PBR/Prefabs/props/notebook.prefab
+  uploadId: 448714

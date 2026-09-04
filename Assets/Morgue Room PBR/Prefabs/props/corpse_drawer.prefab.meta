@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: e8844f0074e08e146ac42fb5eaeab3db
+timeCreated: 1466038440
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 65817
+  packageName: Morgue Room PBR
+  packageVersion: 1.0
+  assetPath: Assets/Morgue Room PBR/Prefabs/props/corpse_drawer.prefab
+  uploadId: 448714
