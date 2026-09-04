@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 6291163f154461f418765041516be4ce
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 65817
+  packageName: Morgue Room PBR
+  packageVersion: 1.0
+  assetPath: Assets/Morgue Room PBR/Models/props/Materials/Channel_lambert1_Diffuse_u1_v1.mat
+  uploadId: 448714

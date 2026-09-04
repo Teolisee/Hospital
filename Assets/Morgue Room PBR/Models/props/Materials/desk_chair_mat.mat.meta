@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: c5f6f45600c50db4381a809da4859f9e
+timeCreated: 1465094787
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 65817
+  packageName: Morgue Room PBR
+  packageVersion: 1.0
+  assetPath: Assets/Morgue Room PBR/Models/props/Materials/desk_chair_mat.mat
+  uploadId: 448714

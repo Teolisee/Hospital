@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 8555b5e3674ee2a49b8206c8ce692744
+timeCreated: 1466041557
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 65817
+  packageName: Morgue Room PBR
+  packageVersion: 1.0
+  assetPath: Assets/Morgue Room PBR/Prefabs/props/photo_frame.prefab
+  uploadId: 448714
