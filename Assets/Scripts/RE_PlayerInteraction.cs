@@ -68,6 +68,18 @@ public class RE_PlayerInteraction : MonoBehaviour
 
     private void Update()
     {
+        // Si hay algún diálogo abierto, ocultar avisos y no interactuar
+        if (RE_NPCInteraction.IsAnyDialogueOpen)
+        {
+            if (promptUIObject != null && promptUIObject.activeSelf) promptUIObject.SetActive(false);
+            if (lastPromptCanvas != null && lastPromptCanvas.activeSelf)
+            {
+                lastPromptCanvas.SetActive(false);
+                lastPromptCanvas = null;
+            }
+            return;
+        }
+
         // 1. Escanear el entorno buscando interactuables
         FindInteractable();
 
@@ -268,7 +280,7 @@ public class RE_PlayerInteraction : MonoBehaviour
     // Dibujar aviso en pantalla mediante OnGUI si no hay HUD configurado
     private void OnGUI()
     {
-        if (!mostrarIndicadorEnPantalla || promptUIObject != null) return;
+        if (RE_NPCInteraction.IsAnyDialogueOpen || !mostrarIndicadorEnPantalla || promptUIObject != null) return;
 
         if (currentInteractable != null)
         {
@@ -288,6 +300,18 @@ public class RE_PlayerInteraction : MonoBehaviour
 
             GUI.Box(new Rect(x, y, ancho, alto), $"[E] {mensaje}", style);
         }
+    }
+
+    private void OnDisable()
+    {
+        if (promptUIObject != null && promptUIObject.activeSelf) promptUIObject.SetActive(false);
+        if (lastPromptCanvas != null && lastPromptCanvas.activeSelf)
+        {
+            lastPromptCanvas.SetActive(false);
+            lastPromptCanvas = null;
+        }
+        currentInteractable = null;
+        currentInteractableGameObject = null;
     }
 
     // Dibuja la esfera amarilla en el editor de Unity

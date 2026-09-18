@@ -191,7 +191,7 @@ public class RE_PlayerMovement : MonoBehaviour
         // ---------------------------------------------------------
         // PASO 8: ACTUALIZAR EL ANIMATOR
         // ---------------------------------------------------------
-        if (animator != null)
+        if (animator != null && HasParameter(animator, speedParameterName))
         {
             // Enviamos la magnitud de velocidad actual al parámetro "Speed" del Animator
             float normalizedSpeed = currentSpeed / (walkSpeed > 0 ? walkSpeed : 1f);
@@ -204,9 +204,19 @@ public class RE_PlayerMovement : MonoBehaviour
         // Al pausar o desactivar el movimiento (ej: al hablar con un NPC),
         // reseteamos la velocidad en el Animator para que no se quede caminando en el sitio.
         currentSpeed = 0f;
-        if (animator != null)
+        if (animator != null && HasParameter(animator, speedParameterName))
         {
             animator.SetFloat(speedParameterName, 0f);
         }
+    }
+
+    private bool HasParameter(Animator anim, string paramName)
+    {
+        if (anim == null || anim.runtimeAnimatorController == null || string.IsNullOrEmpty(paramName)) return false;
+        foreach (var p in anim.parameters)
+        {
+            if (p.name == paramName) return true;
+        }
+        return false;
     }
 }
