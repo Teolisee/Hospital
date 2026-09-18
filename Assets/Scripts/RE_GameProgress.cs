@@ -88,21 +88,10 @@ public class RE_GameProgress : MonoBehaviour
 
     private void Awake() // Awake se ejecuta antes de que el juego siquiera respire (antes de Start).
     {
-        if (Instance == null) // Si todavía no hay ningún "Alcalde"...
-        {
-            Instance = this; // ¡Yo seré el Alcalde!
-            
-            // "DontDestroyOnLoad": Le pone un campo de fuerza a nuestro Alcalde para que sobreviva y pase al siguiente nivel.
-            DontDestroyOnLoad(gameObject); 
-            
-            if (reiniciarAlIniciar) ResetProgress(); // Si el programador activó la trampa, limpiamos la partida.
-            else LoadProgress(); // Si no, cargamos la partida desde el disco duro.
-        }
-        else // Si ya existía otro Alcalde (porque venimos de otro nivel y ya había uno)...
-        {
-            if (reiniciarAlIniciar) Instance.ResetProgress(); 
-            Destroy(gameObject); // Nos destruimos a nosotros mismos porque no puede haber 2 Alcaldes.
-        }
+        Instance = this;
+        
+        if (reiniciarAlIniciar) ResetProgress(); // Si el programador activó la trampa, limpiamos la partida.
+        else LoadProgress(); // Si no, cargamos la partida desde el disco duro.
     }
 
     private void OnEnable() // Cuando este script despierta...

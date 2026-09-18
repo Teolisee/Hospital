@@ -22,22 +22,13 @@ public class RE_LevelTransitionManager : MonoBehaviour // Clase principal para t
 
     private void Awake() // Se ejecuta inmediatamente cuando el objeto se crea
     {
-        // Implementamos el patrón Singleton para que no se destruya al cambiar de nivel
-        if (Instance == null) // Si somos el primer RE_LevelTransitionManager en existir...
-        {
-            Instance = this; // Nos asignamos a nosotros mismos
-            DontDestroyOnLoad(gameObject); // Evitamos que Unity nos borre al cambiar de escena
+        Instance = this;
 
-            // Asegurarnos de que al iniciar la pantalla sea totalmente transparente
-            if (fadeCanvasGroup != null) 
-            {
-                fadeCanvasGroup.alpha = 0f; // 0 de opacidad = transparente
-                fadeCanvasGroup.blocksRaycasts = false; // Desactivar clics en la pantalla negra
-            }
-        }
-        else // Si ya existía otro TransitionManager en la escena...
+        // Asegurarnos de que al iniciar la pantalla sea totalmente transparente
+        if (fadeCanvasGroup != null) 
         {
-            Destroy(gameObject); // Nos destruimos para evitar duplicados y conflictos
+            fadeCanvasGroup.alpha = 0f; // 0 de opacidad = transparente
+            fadeCanvasGroup.blocksRaycasts = false; // Desactivar clics en la pantalla negra
         }
     }
 

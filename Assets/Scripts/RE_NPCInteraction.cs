@@ -1,6 +1,7 @@
 using UnityEngine; // Librería estándar de Unity.
 using UnityEngine.UI; // Herramienta para Botones (Botón 'Continuar').
 using TMPro; // Textos bonitos y nítidos.
+using UnityEngine.InputSystem;
 
 // -----------------------------------------------------------------------------
 // SCRIPT: RE_NPCInteraction
@@ -11,6 +12,8 @@ using TMPro; // Textos bonitos y nítidos.
 // -----------------------------------------------------------------------------
 public class RE_NPCInteraction : MonoBehaviour, IInteractable 
 {
+    public static bool IsAnyDialogueOpen { get; private set; } = false;
+
     [Header("Configuración de NPC")]
     [Tooltip("El mensaje que aparecerá al acercarse al NPC.")]
     public string promptText = "Presiona E para hablar";
@@ -172,11 +175,16 @@ public class RE_NPCInteraction : MonoBehaviour, IInteractable
         AbrirDialogo(); 
     }
 
+    private int frameDialogoAbierto = 0;
+
     // METÁFORA: "La Charla". Congela el movimiento y muestra el cuadro de diálogo.
     private void AbrirDialogo() 
     {
         if (npcDialogosCanvas != null) 
         {
+            IsAnyDialogueOpen = true;
+            frameDialogoAbierto = Time.frameCount;
+
             if (esNPCFacturacion) 
             {
                 int tareasCompletadas = RE_GameProgress.Instance != null ? RE_GameProgress.Instance.progressData.completedTasks.Count : 0;
@@ -230,6 +238,7 @@ public class RE_NPCInteraction : MonoBehaviour, IInteractable
     {
         if (npcDialogosCanvas != null && npcDialogosCanvas.activeSelf)
         {
+            IsAnyDialogueOpen = false;
             npcDialogosCanvas.SetActive(false); 
             
             Cursor.lockState = CursorLockMode.Locked; 
@@ -357,8 +366,48 @@ public class RE_NPCInteraction : MonoBehaviour, IInteractable
         return null;
     }
 
+    private void Update()
+    {
+        // Permitir avanzar o cerrar el diálogo con Espacio, Enter, Escape o botón de Gamepad
+        if (npcDialogosCanvas != null && npcDialogosCanvas.activeSelf)
+        {
+            if (Time.frameCount > frameDialogoAbierto + 10)
+            {
+                bool closeKey = false;
+                if (Keyboard.current != null)
+                {
+                    closeKey = Keyboard.current.spaceKey.wasPressedThisFrame ||
+                               Keyboard.current.enterKey.wasPressedThisFrame ||
+                               Keyboard.current.numpadEnterKey.wasPressedThisFrame ||
+                               Keyboard.current.escapeKey.wasPressedThisFrame;
+                }
+                if (Gamepad.current != null && (Gamepad.current.buttonSouth.wasPressedThisFrame || Gamepad.current.buttonEast.wasPressedThisFrame))
+                {
+                    closeKey = true;
+                }
+
+                if (closeKey)
+                {
+                    CerrarDialogo();
+                }
+            }
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (npcDialogosCanvas != null && npcDialogosCanvas.activeSelf)
+        {
+            IsAnyDialogueOpen = false;
+        }
+    }
+
     private void OnDestroy() 
     {
+        if (npcDialogosCanvas != null && npcDialogosCanvas.activeSelf)
+        {
+            IsAnyDialogueOpen = false;
+        }
         if (botonContinuar != null)
         {
             botonContinuar.onClick.RemoveListener(CerrarDialogo);
