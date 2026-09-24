@@ -12,14 +12,14 @@ EditorBuildSettings:
     path: Assets/Scenes/Nivel 1.unity
     guid: 9b3b56edd9150d743be4dc6d18bd248e
   - enabled: 1
+    path: Assets/Scenes/Nivel 2.unity
+    guid: e812f2cde0288b444a2e1d8380a12cd7
+  - enabled: 1
     path: Assets/Scenes/Victoria.unity
     guid: a94053ef3f3b0c6489dcbb0bcc3b58fa
   - enabled: 1
     path: Assets/Scenes/Fin del Juego.unity
     guid: 2179c68495f29ff49ac9b43174de3c44
-  - enabled: 1
-    path: Assets/Scenes/Hospital_Level2.unity
-    guid: 812b0d58b78d7934ea8cc2c3cfda9f5d
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0
