@@ -1,75 +1,151 @@
-using UnityEngine; // Funciones básicas de Unity
-using UnityEngine.SceneManagement; // Necesario para cambiar entre escenas (niveles)
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
-public class GameOverMenu : MonoBehaviour // Clase principal para el menú de derrota
+/// <summary>
+/// Controla los menús de fin de juego (Derrota o Victoria).
+/// Restaura el cursor y la escala de tiempo, reinicia el nivel correspondiente,
+/// y auto-vincula los botones (Reiniciar, Salir, Menú) incluso si no se enlazaron manualmente.
+/// </summary>
+public class GameOverMenu : MonoBehaviour
 {
-    [Header("Configuración de Escenas")] // Categoría en el Inspector
-    [Tooltip("Nombre de la escena del primer nivel para reiniciar.")] // Explicación de la variable
-    [SerializeField] private string levelSceneName = "Nivel 1"; // Nombre del nivel al que volveremos a jugar
+    [Header("Configuración de Escenas")]
+    [Tooltip("Nombre de la escena por defecto si no se detecta el nivel guardado.")]
+    [SerializeField] private string levelSceneName = "Nivel 1";
 
-    [Tooltip("Nombre de la escena del menú principal.")] // Explicación de la variable
-    [SerializeField] private string mainMenuSceneName = "MenuPrincipal"; // Nombre de la escena del menú principal
+    [Tooltip("Nombre de la escena del menú principal.")]
+    [SerializeField] private string mainMenuSceneName = "MainMenu";
 
-    private void Start() // Se ejecuta al abrirse esta pantalla (el menú de Game Over)
+    private void Start()
     {
-        // Aseguramos que el jugador pueda usar el ratón para hacer clic en los botones
-        Cursor.lockState = CursorLockMode.None; // Desbloqueamos el cursor (para que no esté atrapado en el centro)
-        Cursor.visible = true; // Hacemos que el puntero sea visible en pantalla
+        // Restaurar estado de juego y ratón
+        Time.timeScale = 1f;
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        AutoBindButtons();
+    }
+
+    private void AutoBindButtons()
+    {
+        // Buscar botones tanto en hijos como en toda la escena de UI si no somos el Canvas
+        Button[] buttons = FindObjectsByType<Button>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (var btn in buttons)
+        {
+            string n = btn.gameObject.name.ToLower();
+
+            if (n.Contains("reiniciar") || n.Contains("reintentar") || n.Contains("restart") || n.Contains("retry") || n.Contains("jugar"))
+            {
+                btn.onClick.RemoveListener(RestartLevel);
+                btn.onClick.AddListener(RestartLevel);
+            }
+            else if (n.Contains("menu") || n.Contains("inicio") || n.Contains("principal"))
+            {
+                btn.onClick.RemoveListener(LoadMainMenu);
+                btn.onClick.AddListener(LoadMainMenu);
+            }
+            else if (n.Contains("salir") || n.Contains("quit") || n.Contains("exit"))
+            {
+                btn.onClick.RemoveListener(QuitGame);
+                btn.onClick.AddListener(QuitGame);
+            }
+        }
     }
 
     /// <summary>
-    /// Reinicia el nivel cargando la escena de juego.
+    /// Reinicia el nivel en el que se encontraba el jugador, o el nivel por defecto.
     /// </summary>
-    public void RestartLevel() // Método que se asigna al botón de "Reintentar" o "Reiniciar"
+    public void RestartLevel()
     {
-        // Si existe un sistema de guardado de progreso
-        if (RE_GameProgress.Instance != null)
+        Time.timeScale = 1f;
+
+        string targetScene = levelSceneName;
+        string activeScene = SceneManager.GetActiveScene().name;
+
+        // Si estamos en la pantalla de Victoria, reiniciar vuelve a comenzar desde el Nivel 1
+        if (activeScene.ToLower().Contains("victoria"))
         {
-            RE_GameProgress.Instance.ResetLevelProgressOnly(); // Borramos el progreso de este nivel fallido
+            targetScene = "Nivel 1";
+            if (RE_GameProgress.Instance != null)
+            {
+                RE_GameProgress.Instance.ResetProgress();
+            }
+        }
+        else if (RE_GameProgress.Instance != null && RE_GameProgress.Instance.progressData != null)
+        {
+            RE_GameProgress.Instance.ResetLevelProgressOnly();
             
-            int maxHealth = RE_GameProgress.Instance.progressData.playerMaxHealth; // Obtenemos la salud máxima
-            if (maxHealth <= 0) maxHealth = 100; // Evitamos un error donde la salud sea 0 al iniciar
+            int maxHealth = RE_GameProgress.Instance.progressData.playerMaxHealth;
+            if (maxHealth <= 0) maxHealth = 100;
             
-            RE_GameProgress.Instance.progressData.RE_PlayerHealth = maxHealth; // Restauramos la vida al máximo
-            RE_GameProgress.Instance.SaveProgress(); // Guardamos estos cambios de reinicio
+            RE_GameProgress.Instance.progressData.RE_PlayerHealth = maxHealth;
+            RE_GameProgress.Instance.SaveProgress();
+
+            string savedScene = RE_GameProgress.Instance.progressData.currentSceneName;
+            if (!string.IsNullOrEmpty(savedScene) && 
+                !savedScene.ToLower().Contains("menu") && 
+                !savedScene.ToLower().Contains("fin") &&
+                !savedScene.ToLower().Contains("juego"))
+            {
+                targetScene = savedScene;
+            }
         }
 
-        // Si tenemos un sistema de transiciones de pantalla (fade in/out)
+        if (string.IsNullOrEmpty(targetScene)) targetScene = "Nivel 1";
+
         if (RE_LevelTransitionManager.Instance != null)
         {
-            RE_LevelTransitionManager.Instance.TransitionToScene(levelSceneName); // Usamos transición suave
-        }
-        else // Si no hay transiciones suaves...
-        {
-            SceneManager.LoadScene(levelSceneName); // Cargamos la escena directamente de forma brusca
-        }
-    }
-
-    /// <summary>
-    /// Carga la escena del menú principal.
-    /// </summary>
-    public void LoadMainMenu() // Método que se asigna al botón "Salir al menú"
-    {
-        if (RE_LevelTransitionManager.Instance != null) // Si hay transiciones suaves
-        {
-            RE_LevelTransitionManager.Instance.TransitionToScene(mainMenuSceneName); // Transición al menú principal
+            RE_LevelTransitionManager.Instance.TransitionToScene(targetScene);
         }
         else
         {
-            SceneManager.LoadScene(mainMenuSceneName); // Carga directa del menú principal
+            SceneManager.LoadScene(RE_LevelTransitionManager.ResolveValidSceneName(targetScene));
         }
     }
 
-    /// <summary>
-    /// Cierra la aplicación de juego.
-    /// </summary>
-    public void QuitGame() // Método que se asigna al botón "Salir del juego"
+    public void LoadMainMenu()
     {
-        Debug.Log("Cerrando el juego..."); // Imprimimos en consola que nos vamos
-        Application.Quit(); // Cierra el juego (solo funciona cuando ya está exportado/compilado)
+        Time.timeScale = 1f;
 
-        #if UNITY_EDITOR // Esto solo se compila si estamos dentro del editor de Unity
-        UnityEditor.EditorApplication.isPlaying = false; // Detiene la simulación en el editor
-        #endif
+        string targetMenu = !string.IsNullOrEmpty(mainMenuSceneName) && mainMenuSceneName != "MenuPrincipal" 
+            ? mainMenuSceneName 
+            : "MainMenu";
+
+        if (RE_LevelTransitionManager.Instance != null)
+        {
+            RE_LevelTransitionManager.Instance.TransitionToScene(targetMenu);
+        }
+        else
+        {
+            SceneManager.LoadScene(RE_LevelTransitionManager.ResolveValidSceneName(targetMenu));
+        }
+    }
+
+    public void QuitGame()
+    {
+        Debug.Log("[GameOverMenu] Saliendo del juego...");
+        Application.Quit();
+
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#endif
+    }
+
+    /// <summary>
+    /// Garantiza que en pantallas de fin de juego (Victoria o Fin del Juego) siempre
+    /// exista un controlador para desbloquear el cursor y responder a los clics.
+    /// </summary>
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void EnsureMenuManagerOnEndScenes()
+    {
+        string sceneName = SceneManager.GetActiveScene().name.ToLower();
+        if (sceneName.Contains("victoria") || sceneName.Contains("fin del juego"))
+        {
+            if (FindFirstObjectByType<GameOverMenu>() == null)
+            {
+                GameObject manager = new GameObject("GameOverManager_AutoHelper");
+                manager.AddComponent<GameOverMenu>();
+            }
+        }
     }
 }

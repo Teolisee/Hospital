@@ -1,4 +1,4 @@
-%YAML 1.1
+﻿%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!29 &1
 OcclusionCullingSettings:
@@ -2829,7 +2829,7 @@ MonoBehaviour:
   completeSFX: {fileID: 0}
   audioSource: {fileID: 0}
   completeParticles: {fileID: 0}
-  autoCompleteOn100Percent: 1
+  autoCompleteOn100Percent: 0
 --- !u!4 &138065965
 Transform:
   m_ObjectHideFlags: 0
@@ -4265,12 +4265,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3fe50dd60919a39468188a413479242a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  promptText: Presiona E para hablar con el Guardia
-  npcId: 
-  npcName: 
+  promptText: Presiona E para hablar con la Recepcionista
+  npcId: Npc Recepcionista
+  npcName: Recepcionista
   npcDialogue: Aqui pagas Chamito
   requiereOrdenSecuencial: 0
-  esNPCFacturacion: 0
+  esNPCFacturacion: 1
   mensajeTareasPendientes: "A\xFAn no puedes facturar tu cita. Primero debes hablar
     con el Guardia, el Enfermero y el Civil."
   npcDialogosCanvas: {fileID: 2129917982}
@@ -5675,9 +5675,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3fe50dd60919a39468188a413479242a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  promptText: Presiona E para hablar con el Guardia
-  npcId: 
-  npcName: 
+  promptText: Presiona E para hablar con el Enfermero
+  npcId: Npc Enfermero
+  npcName: Enfermero
   npcDialogue: 
   requiereOrdenSecuencial: 0
   esNPCFacturacion: 0
@@ -17765,7 +17765,7 @@ RectTransform:
   m_GameObject: {fileID: 666906870}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1098497826}
@@ -27349,10 +27349,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3fe50dd60919a39468188a413479242a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  promptText: Presiona E para hablar con el Guardia
-  npcId: 
-  npcName: 
-  npcDialogue: hola
+  promptText: Presiona E para hablar con el Civil
+  npcId: Npc Civil
+  npcName: Civil
+  npcDialogue: Hola, vine por una consulta de rutina.
   requiereOrdenSecuencial: 0
   esNPCFacturacion: 0
   mensajeTareasPendientes: "A\xFAn no puedes facturar tu cita. Primero debes hablar
@@ -30289,7 +30289,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1183941228
 Transform:
   m_ObjectHideFlags: 0
@@ -38190,8 +38190,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   promptText: Presiona E para hablar con el Guardia
-  npcId: 
-  npcName: 
+  npcId: Npc Guardia
+  npcName: Guardia
   npcDialogue: 
   requiereOrdenSecuencial: 0
   esNPCFacturacion: 0
@@ -38496,7 +38496,7 @@ RectTransform:
   m_GameObject: {fileID: 1354844841}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 141053801}
@@ -42999,7 +42999,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1596277084
 Transform:
   m_ObjectHideFlags: 0
@@ -48419,7 +48419,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!65 &1830452043
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -48516,7 +48516,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1830452042}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3fe50dd60919a39468188a413479242a, type: 3}
   m_Name: 
@@ -52559,7 +52559,7 @@ RectTransform:
   m_GameObject: {fileID: 2035004422}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1118596634}
@@ -54749,7 +54749,7 @@ RectTransform:
   m_GameObject: {fileID: 2129917982}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 849273814}

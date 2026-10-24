@@ -1,54 +1,152 @@
 using UnityEngine;
-using UnityEngine.SceneManagement; // Importado para posible uso futuro (ej: volver al menú)
+using UnityEngine.SceneManagement;
+using UnityEngine.InputSystem;
 
-// Controla el sistema de pausa del juego con la tecla P
+/// <summary>
+/// Controla el sistema de pausa del juego mediante las teclas 'Escape' o 'P',
+/// gestiona el tiempo (Time.timeScale), el cursor del ratón y la navegación segura desde la pausa.
+/// </summary>
 public class MenuPausa : MonoBehaviour
 {
-    public GameObject panelPause; // Panel de la UI (la pantalla oscura con botones) que se muestra al pausar
-    public bool pause = false;    // Estado actual: true = pausado, false = jugando
+    [Header("Referencias de UI")]
+    [Tooltip("Panel de la interfaz gráfica que se muestra al pausar.")]
+    public GameObject panelPause;
 
-    // Update se ejecuta una vez por frame — aquí detectamos las teclas en tiempo real
-    void Update()
+    [Header("Estado")]
+    public bool pause = false;
+
+    private void Start()
     {
-        // --- FUNCIÓN IMPORTANTE: Input.GetKeyDown ---
-        // A diferencia de GetKey (que se dispara mientas mantienes la tecla hundida),
-        // GetKeyDown solo se dispara en el fotograma EXACTO en que presionas la tecla hacia abajo.
-        // Esto evita que el juego se pause y despause 60 veces por segundo si dejas el dedo en la tecla.
-        if (Input.GetKeyDown(KeyCode.P))
+        // Asegurar que al comenzar la escena el juego no esté congelado
+        Time.timeScale = 1f;
+        if (panelPause != null)
         {
-            // Solo pausamos si el juego NO estaba pausado ya
+            panelPause.SetActive(false);
+        }
+        pause = false;
+    }
+
+    private void Update()
+    {
+        // Si hay un diálogo de NPC abierto, no interferir con la pausa
+        if (RE_NPCInteraction.IsAnyDialogueOpen) return;
+
+        if (WasPauseTogglePressed())
+        {
             if (!pause)
             {
-                panelPause.SetActive(true); // Muestra el panel gráfico de pausa en pantalla
-                pause = true;               // Marcamos en la variable que el juego está pausado
-
-                // --- FUNCIÓN IMPORTANTE: Time.timeScale ---
-                // 'timeScale' es la velocidad a la que pasa el tiempo en el juego.
-                // 1f es la velocidad normal. 0.5f sería cámara lenta (Matrix).
-                // Al ponerlo en 0f, el tiempo se congela por completo. Físicas, animaciones y temporizadores 
-                // basados en Time.deltaTime (como nuestro reloj de juego) se detendrán.
-                Time.timeScale = 0f; 
-
-                // Libera el cursor del mouse ('None') para que puedas moverlo por la pantalla
-                // y hace que la flechita blanca sea visible ('visible = true') para poder hacer clic en los botones
-                Cursor.lockState = CursorLockMode.None;
-                Cursor.visible = true;
+                Pausar();
+            }
+            else
+            {
+                Resume();
             }
         }
     }
 
-    // Esta función es 'public' para poder asignarla al botón "Reanudar" del menú desde el Inspector
+    private bool WasPauseTogglePressed()
+    {
+        // Soporte Input System moderno
+        if (Keyboard.current != null)
+        {
+            if (Keyboard.current.escapeKey.wasPressedThisFrame || Keyboard.current.pKey.wasPressedThisFrame)
+            {
+                return true;
+            }
+        }
+
+        if (Gamepad.current != null && Gamepad.current.startButton.wasPressedThisFrame)
+        {
+            return true;
+        }
+
+        // Fallback Entrada tradicional
+        try
+        {
+            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.P))
+            {
+                return true;
+            }
+        }
+        catch { }
+
+        return false;
+    }
+
+    public void Pausar()
+    {
+        if (panelPause != null) panelPause.SetActive(true);
+        pause = true;
+        Time.timeScale = 0f;
+
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+    }
+
     public void Resume()
     {
-        panelPause.SetActive(false); // Oculta el panel gráfico de pausa
-        pause = false;               // Marcamos que ya no estamos en pausa
+        if (panelPause != null) panelPause.SetActive(false);
+        pause = false;
+        Time.timeScale = 1f;
 
-        // Devolvemos el tiempo a su velocidad normal (1.0 = 100%)
-        Time.timeScale = 1f; 
+        // Solo bloquear el ratón si no hay diálogo activo
+        if (!RE_NPCInteraction.IsAnyDialogueOpen)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
+    }
 
-        // Vuelve a bloquear el cursor en el centro ('Locked') y lo oculta ('visible = false')
-        // para que puedas volver a jugar estilo First Person Shooter.
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+    /// <summary>
+    /// Reinicia el nivel actual de forma segura restaurando el tiempo a 1.
+    /// </summary>
+    public void RestartLevel()
+    {
+        Time.timeScale = 1f;
+        pause = false;
+
+        if (RE_GameProgress.Instance != null)
+        {
+            RE_GameProgress.Instance.ResetLevelProgressOnly();
+        }
+
+        string currentScene = SceneManager.GetActiveScene().name;
+        if (RE_LevelTransitionManager.Instance != null)
+        {
+            RE_LevelTransitionManager.Instance.TransitionToScene(currentScene);
+        }
+        else
+        {
+            SceneManager.LoadScene(currentScene);
+        }
+    }
+
+    /// <summary>
+    /// Vuelve al menú principal restaurando el tiempo a 1.
+    /// </summary>
+    public void LoadMainMenu(string sceneName = "MainMenu")
+    {
+        Time.timeScale = 1f;
+        pause = false;
+
+        string target = !string.IsNullOrEmpty(sceneName) && sceneName != "MenuPrincipal" ? sceneName : "MainMenu";
+
+        if (RE_LevelTransitionManager.Instance != null)
+        {
+            RE_LevelTransitionManager.Instance.TransitionToScene(target);
+        }
+        else
+        {
+            SceneManager.LoadScene(RE_LevelTransitionManager.ResolveValidSceneName(target));
+        }
+    }
+
+    private void OnDisable()
+    {
+        // Prevenir que la escena quede congelada si se desactiva este componente
+        if (pause)
+        {
+            Time.timeScale = 1f;
+        }
     }
 }

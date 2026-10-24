@@ -1,12 +1,10 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// -----------------------------------------------------------------------------
-// SCRIPT: RE_PlayerMovement
-// METÁFORA: "Las Piernas y el Motor del Jugador"
-// Controla el movimiento en 3ª persona: caminar, correr, saltar, gravedad,
-// rotación suave en base a la cámara y sincronización con el Animator.
-// -----------------------------------------------------------------------------
+/// <summary>
+/// Controla el movimiento en 3ª persona del jugador: caminar, correr, saltar, gravedad,
+/// rotación hacia la dirección de la cámara y sincronización eficiente con el Animator.
+/// </summary>
 [RequireComponent(typeof(CharacterController))]
 public class RE_PlayerMovement : MonoBehaviour 
 {
@@ -31,35 +29,34 @@ public class RE_PlayerMovement : MonoBehaviour
     [Tooltip("Referencia a la cámara principal para orientar el movimiento.")]
     public Transform cameraTransform;
 
-    [Tooltip("Velocidad con la que el personaje gira hacia la dirección de movimiento.")]
+    [Tooltip("Velocidad de giro del personaje hacia la dirección de movimiento.")]
     public float rotationSpeed = 12.0f;
 
     [Header("Animación (Opcional)")]
-    [Tooltip("Componente Animator del modelo 3D (se detecta automáticamente si está vacío).")]
+    [Tooltip("Componente Animator del modelo 3D.")]
     public Animator animator;
 
-    [Tooltip("Nombre del parámetro Float en el Animator para controlar la velocidad (ej: 'Speed').")]
+    [Tooltip("Nombre del parámetro Float en el Animator para controlar la velocidad.")]
     public string speedParameterName = "Speed";
 
-    // Componentes internos
     private CharacterController controller;
     private float currentSpeed;
     private float speedSmoothVelocity;
-    private Vector3 verticalVelocity; // Maneja la gravedad y el salto
+    private Vector3 verticalVelocity;
     private bool isGrounded;
+    private int speedParamHash = 0;
+    private bool hasSpeedParameter = false;
 
     private void Start() 
     {
-        // 1. Obtenemos el CharacterController del jugador
         controller = GetComponent<CharacterController>(); 
 
-        // 2. Si no asignamos la cámara en el Inspector, buscamos la cámara principal automáticamente
         if (cameraTransform == null && Camera.main != null)
         {
             cameraTransform = Camera.main.transform;
         }
 
-        // 3. Si no asignamos el Animator, lo buscamos en este objeto o en los hijos (donde suele estar el modelo 3D)
+        // Nota: no usar '??' con componentes de Unity (el "null falso" del editor rompe el fallback).
         if (animator == null)
         {
             animator = GetComponent<Animator>();
@@ -67,28 +64,47 @@ public class RE_PlayerMovement : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Verifica (una sola vez, cuando el Animator ya está inicializado) si existe el parámetro de velocidad.
+    /// </summary>
+    private bool EnsureAnimatorParameter()
+    {
+        if (hasSpeedParameter) return true;
+        if (animator == null || animator.runtimeAnimatorController == null || string.IsNullOrEmpty(speedParameterName)) return false;
+        if (!animator.isActiveAndEnabled || !animator.isInitialized) return false;
+
+        speedParamHash = Animator.StringToHash(speedParameterName);
+        foreach (var p in animator.parameters)
+        {
+            if (p.nameHash == speedParamHash)
+            {
+                hasSpeedParameter = true;
+                break;
+            }
+        }
+        return hasSpeedParameter;
+    }
+
     private void Update() 
     {
-        // ---------------------------------------------------------
-        // PASO 1: DETECTAR SI ESTAMOS TOCANDO EL PISO
-        // ---------------------------------------------------------
+        // Si el juego está en pausa o tiempo congelado, no procesar movimiento
+        if (Time.timeScale <= 0.0001f) return;
+
+        // 1. Estado en el suelo
         isGrounded = controller.isGrounded;
 
-        // Si estamos en el suelo y caíamos, mantenemos una pequeña fuerza hacia abajo para pegarnos a rampas y escalones
         if (isGrounded && verticalVelocity.y < 0)
         {
             verticalVelocity.y = -2f;
         }
 
-        // ---------------------------------------------------------
-        // PASO 2: LEER ENTRADAS DEL JUGADOR (Teclado y Gamepad)
-        // ---------------------------------------------------------
+        // 2. Lectura de entradas
         float horizontalInput = 0f;
         float verticalInput = 0f;
         bool isSprinting = false;
         bool jumpPressed = false;
 
-        // Soporte Teclado (Nuevo Input System)
+        // Soporte Teclado (Input System moderno)
         if (Keyboard.current != null)
         {
             if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) horizontalInput += 1f; 
@@ -101,7 +117,7 @@ public class RE_PlayerMovement : MonoBehaviour
             if (Keyboard.current.spaceKey.wasPressedThisFrame) jumpPressed = true;
         }
 
-        // Soporte Legacy Input (Fallback de seguridad)
+        // Fallback Entrada Tradicional
         try
         {
             if (horizontalInput == 0f) horizontalInput = Input.GetAxisRaw("Horizontal");
@@ -122,13 +138,10 @@ public class RE_PlayerMovement : MonoBehaviour
             if (Gamepad.current.buttonSouth.wasPressedThisFrame) jumpPressed = true;
         }
 
-        // Vector de entrada plano en 2D
         Vector2 inputVector = new Vector2(horizontalInput, verticalInput);
-        if (inputVector.magnitude > 1f) inputVector.Normalize();
+        if (inputVector.sqrMagnitude > 1f) inputVector.Normalize();
 
-        // ---------------------------------------------------------
-        // PASO 3: TRADUCIR LA DIRECCIÓN SEGÚN LA CÁMARA
-        // ---------------------------------------------------------
+        // 3. Dirección según la cámara
         Vector3 moveDirection = Vector3.zero;
 
         if (cameraTransform != null)
@@ -148,75 +161,52 @@ public class RE_PlayerMovement : MonoBehaviour
             moveDirection = new Vector3(inputVector.x, 0f, inputVector.y);
         }
 
-        // ---------------------------------------------------------
-        // PASO 4: CALCULAR VELOCIDAD Y SUAVIZADO
-        // ---------------------------------------------------------
+        // 4. Velocidad y suavizado
         float targetSpeed = 0f;
-        if (inputVector.magnitude > 0.05f)
+        if (inputVector.sqrMagnitude > 0.0025f)
         {
             targetSpeed = isSprinting ? sprintSpeed : walkSpeed;
         }
 
         currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, speedSmoothTime);
 
-        // ---------------------------------------------------------
-        // PASO 5: ROTACIÓN SUAVE DEL PERSONAJE
-        // ---------------------------------------------------------
+        // 5. Rotación del personaje
         if (moveDirection.sqrMagnitude > 0.001f)
         {
             Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
 
-        // ---------------------------------------------------------
-        // PASO 6: SALTO Y GRAVEDAD
-        // ---------------------------------------------------------
+        // 6. Salto y gravedad
         if (jumpPressed && isGrounded)
         {
-            // Fórmula física del salto: v = sqrt(h * -2 * g)
             verticalVelocity.y = Mathf.Sqrt(jumpHeight * -2.0f * gravity);
         }
 
-        // Aplicamos gravedad continuamente
         verticalVelocity.y += gravity * Time.deltaTime;
 
-        // ---------------------------------------------------------
-        // PASO 7: MOVER EL CHARACTER CONTROLLER
-        // ---------------------------------------------------------
+        // 7. Aplicar movimiento
         Vector3 horizontalMovement = moveDirection.normalized * currentSpeed;
         Vector3 totalMovement = horizontalMovement + verticalVelocity;
 
         controller.Move(totalMovement * Time.deltaTime);
 
-        // ---------------------------------------------------------
-        // PASO 8: ACTUALIZAR EL ANIMATOR
-        // ---------------------------------------------------------
-        if (animator != null && HasParameter(animator, speedParameterName))
+        // 8. Actualizar Animator sin allocs
+        if (EnsureAnimatorParameter())
         {
-            // Enviamos la magnitud de velocidad actual al parámetro "Speed" del Animator
             float normalizedSpeed = currentSpeed / (walkSpeed > 0 ? walkSpeed : 1f);
-            animator.SetFloat(speedParameterName, normalizedSpeed, 0.1f, Time.deltaTime);
+            animator.SetFloat(speedParamHash, normalizedSpeed, 0.1f, Time.deltaTime);
         }
     }
 
     private void OnDisable()
     {
-        // Al pausar o desactivar el movimiento (ej: al hablar con un NPC),
-        // reseteamos la velocidad en el Animator para que no se quede caminando en el sitio.
         currentSpeed = 0f;
-        if (animator != null && HasParameter(animator, speedParameterName))
-        {
-            animator.SetFloat(speedParameterName, 0f);
-        }
-    }
+        verticalVelocity = Vector3.zero;
 
-    private bool HasParameter(Animator anim, string paramName)
-    {
-        if (anim == null || anim.runtimeAnimatorController == null || string.IsNullOrEmpty(paramName)) return false;
-        foreach (var p in anim.parameters)
+        if (animator != null && hasSpeedParameter && animator.isActiveAndEnabled)
         {
-            if (p.name == paramName) return true;
+            animator.SetFloat(speedParamHash, 0f);
         }
-        return false;
     }
 }

@@ -33998,7 +33998,7 @@ RectTransform:
   m_GameObject: {fileID: 954408876}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1117451612}
@@ -42827,7 +42827,7 @@ MonoBehaviour:
   completeSFX: {fileID: 0}
   audioSource: {fileID: 0}
   completeParticles: {fileID: 0}
-  autoCompleteOn100Percent: 1
+  autoCompleteOn100Percent: 0
 --- !u!4 &1208076184
 Transform:
   m_ObjectHideFlags: 0
@@ -55722,7 +55722,7 @@ RectTransform:
   m_GameObject: {fileID: 1445797433}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 52254613}
@@ -60903,7 +60903,7 @@ RectTransform:
   m_GameObject: {fileID: 1452225681}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1207557113}
@@ -68471,7 +68471,7 @@ RectTransform:
   m_GameObject: {fileID: 1727215037}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1765036875}
@@ -68660,7 +68660,7 @@ RectTransform:
   m_GameObject: {fileID: 1734960029}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2108445061}

@@ -1,81 +1,66 @@
-using UnityEngine; // La caja de herramientas básica de Unity.
-using System.Collections.Generic; // Nos permite crear "Listas" (mochilas donde guardamos muchos datos juntos).
-using TMPro; // Herramienta para usar letras bonitas y nítidas (TextMeshPro).
-using UnityEngine.UI; // Herramienta para usar barras de vida o botones.
-using UnityEngine.SceneManagement; // El encargado de cambiar de mapas/niveles.
+using UnityEngine;
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
-// -----------------------------------------------------------------------------
-// CLASE: GameProgressData
-// METÁFORA: "La Hoja de Vida / El Archivero"
-// Esta clase no tiene código que haga acciones. Es literalmente un pedazo de papel 
-// donde anotamos qué ha hecho el jugador para luego guardarlo en el disco duro.
-// -----------------------------------------------------------------------------
-[System.Serializable] // Permite que Unity "empaquete" estos datos en un archivo de texto (JSON)
+[System.Serializable]
 public class GameProgressData 
 {
     [Header("Datos Generales")]
-    public string currentSceneName = "Hospital_Lobby"; // En qué piso del hospital se quedó.
-    public int RE_PlayerHealth = 100; // Con cuánta vida se fue a dormir.
-    public int playerMaxHealth = 100; // Cuánta vida máxima puede tener.
+    public string currentSceneName = "Nivel 1";
+    public int RE_PlayerHealth = 100;
+    public int playerMaxHealth = 100;
 
     [Header("Progreso del Juego")]
-    public List<string> completedTasks = new List<string>(); // La lista del mercado: "Ya hablé con el Guardia", "Ya hablé con el Civil", etc.
-    public List<string> keycardsObtained = new List<string>(); // Llavero para guardar tarjetas de acceso.
-    public int currentObjectiveIndex = 0; // Por qué paso de la misión vamos (0, 1, 2...).
+    public List<string> completedTasks = new List<string>();
+    public List<string> keycardsObtained = new List<string>();
+    public int currentObjectiveIndex = 0;
 
     [Header("Posición del Jugador")]
-    public bool hasSavedPosition = false; // ¿Guardamos la ubicación exacta en el mapa?
-    public float playerPosX; // Coordenada X (Derecha/Izquierda)
-    public float playerPosY; // Coordenada Y (Arriba/Abajo)
-    public float playerPosZ; // Coordenada Z (Adelante/Atrás)
+    public bool hasSavedPosition = false;
+    public float playerPosX;
+    public float playerPosY;
+    public float playerPosZ;
 
     [Header("Hitos de Progreso")]
-    // Como las insignias o trofeos. ¿Ya llegó a cierto porcentaje del nivel?
     public bool reached25 = false; 
     public bool reached50 = false; 
     public bool reached75 = false; 
-    public bool reached100 = false; 
+    public bool reached100 = false;
+
+    // Propiedad cómoda para código moderno manteniendo retrocompatibilidad
+    public int playerHealth
+    {
+        get => RE_PlayerHealth;
+        set => RE_PlayerHealth = value;
+    }
 }
 
-// -----------------------------------------------------------------------------
-// SCRIPT PRINCIPAL: RE_GameProgress
-// METÁFORA: "El Alcalde del Juego / El Cerebro"
-// Este script administra la hoja de vida (GameProgressData) y toma las decisiones.
-// -----------------------------------------------------------------------------
+/// <summary>
+/// Gestiona los datos globales de progreso, persistencia en PlayerPrefs (JSON)
+/// y sincronización con el HUD de objetivos y porcentaje.
+/// </summary>
 public class RE_GameProgress : MonoBehaviour 
 {
-    // -------------------------------------------------------------------------
-    // EXPLICACIÓN DE 'SINGLETON' (Instance) PARA TU SUSTENTACIÓN:
-    // Imagina que este script es el Alcalde de la ciudad. Solo puede haber un alcalde.
-    // Si un ciudadano (otro script) quiere hablar con él, no tiene que ir preguntando 
-    // casa por casa dónde vive. Simplemente llama a "La Oficina del Alcalde" (Instance) de forma directa.
-    // Esto hace que el código sea rapidísimo porque todos saben exactamente dónde encontrar el progreso del juego.
-    // -------------------------------------------------------------------------
     public static RE_GameProgress Instance { get; private set; }
 
     [Header("Datos de Progreso")]
-    // Creamos nuestra hoja de papel en blanco usando la clase de arriba.
     public GameProgressData progressData = new GameProgressData(); 
 
     [Header("Ajustes de Porcentaje")]
     [Tooltip("Cantidad total de misiones principales necesarias para llegar al 100%.")]
-    public int totalMainTasks = 4; // Por defecto son 4 NPCs (Guardia, Civil, Enfermero, Recepcionista).
+    public int totalMainTasks = 4;
 
     [Header("Herramientas de Prueba")]
-    [Tooltip("Dale a Play con esto marcado para borrar la partida guardada y empezar de 0.")]
-    public bool reiniciarAlIniciar = false; // Trampa para que los programadores prueben el juego desde cero.
+    [Tooltip("Marcar para borrar la partida guardada y empezar desde cero al iniciar.")]
+    public bool reiniciarAlIniciar = false;
 
     [Header("Referencias de UI (HUD)")]
-    // Estos son los enlaces a los objetos gráficos de la pantalla (El 100% y la barra de progreso).
     [SerializeField] private GameObject progressTextObject; 
     [SerializeField] private GameObject progressBarObject; 
 
-    // -------------------------------------------------------------------------
-    // EXPLICACIÓN DE DELEGADOS Y EVENTOS (Action):
-    // Imagina que esto es una "alarma de incendios". El Alcalde (este script) jala la alarma.
-    // No sabe quién va a escucharla (puede ser el script de música, de logros, etc.), 
-    // pero él cumple con gritar: "¡LLEGAMOS AL 100%!" y los demás actúan solos.
-    // -------------------------------------------------------------------------
+    // Eventos y delegados para notificar cambios de progreso
     public static event System.Action<float> OnProgressChanged;
     public static event System.Action OnProgress25;
     public static event System.Action OnProgress50;
@@ -83,81 +68,93 @@ public class RE_GameProgress : MonoBehaviour
     public static event System.Action OnProgress100;
 
     [Header("Configuración de Guardado")]
-    [Tooltip("Clave con la que se guardará el archivo en el sistema.")]
-    [SerializeField] private string saveKey = "HospitalGameProgress"; // El nombre de la carpeta virtual donde se guardará.
+    [SerializeField] private string saveKey = "HospitalGameProgress";
 
-    private void Awake() // Awake se ejecuta antes de que el juego siquiera respire (antes de Start).
+    private void Awake()
     {
+        // IMPORTANTE: Este componente vive dentro del Canvas del HUD ("Hud Progreso y jugador").
+        // NO se debe desacoplar (SetParent) ni marcar DontDestroyOnLoad, porque eso saca el HUD
+        // del Canvas y deja de dibujarse. El progreso persiste entre escenas vía PlayerPrefs.
         Instance = this;
-        
-        if (reiniciarAlIniciar) ResetProgress(); // Si el programador activó la trampa, limpiamos la partida.
-        else LoadProgress(); // Si no, cargamos la partida desde el disco duro.
+
+        if (reiniciarAlIniciar)
+        {
+            ResetProgress();
+        }
+        else
+        {
+            LoadProgress();
+        }
     }
 
-    private void OnEnable() // Cuando este script despierta...
+    private void OnEnable()
     {
-        SceneManager.sceneLoaded += OnSceneLoaded; // Le decimos a Unity: "Avísame cada vez que termines de cargar un nivel nuevo".
+        SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
-    private void OnDisable() // Cuando apagamos el script...
+    private void OnDisable()
     {
-        SceneManager.sceneLoaded -= OnSceneLoaded; // Dejamos de pedirle avisos a Unity.
+        SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode) // Esta función se llama sola cuando entramos a un nuevo nivel
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        DetectUIComponents(); // Volvemos a buscar dónde están los textos en la pantalla.
-        ActualizarUI(GetProgressPercentage()); // Refrescamos los números.
+        DetectUIComponents();
+        ActualizarUI(GetProgressPercentage());
     }
 
-    private void Start() // Primer latido del juego
+    private void Start()
     {
         DetectUIComponents(); 
         ActualizarUI(GetProgressPercentage()); 
     }
 
     /// <summary>
-    /// Función detective: Si olvidaste arrastrar los textos al Inspector, esta función los busca por todo el mapa.
+    /// Localiza de forma eficiente los componentes de UI del HUD en la escena actual.
     /// </summary>
     public void DetectUIComponents()
     {
-        // 1. Buscamos el texto de porcentaje si está vacío o se perdió al cambiar de escena
+        // 1. Buscar texto de porcentaje si la referencia es nula o se perdió en el cambio de escena
         if (progressTextObject == null)
         {
-            progressTextObject = GameObject.Find("Porcentaje");
-            if (progressTextObject == null)
+            GameObject directObj = GameObject.Find("Porcentaje");
+            if (directObj != null)
             {
-                foreach (GameObject go in Resources.FindObjectsOfTypeAll<GameObject>()) 
+                progressTextObject = directObj;
+            }
+            else
+            {
+                TextMeshProUGUI[] tmps = FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                foreach (var t in tmps)
                 {
-                    if (go.hideFlags == HideFlags.None && (go.name.ToLower().Contains("porcentaje") || go.name.ToLower().Contains("progreso")))
+                    string n = t.gameObject.name.ToLower();
+                    if (n.Contains("porcentaje") || n.Contains("progreso"))
                     {
-                        if (go.GetComponent<TextMeshProUGUI>() != null || go.GetComponentInChildren<TextMeshProUGUI>() != null ||
-                            go.GetComponent<Text>() != null || go.GetComponentInChildren<Text>() != null)
-                        {
-                            progressTextObject = go;
-                            break;
-                        }
+                        progressTextObject = t.gameObject;
+                        break;
                     }
                 }
             }
         }
 
-        // 2. Buscamos la barra de progreso si está vacía o se perdió al cambiar de escena
+        // 2. Buscar barra de progreso
         if (progressBarObject == null)
         {
-            progressBarObject = GameObject.Find("Barra de progreso");
-            if (progressBarObject == null)
+            GameObject directBar = GameObject.Find("Barra de progreso");
+            if (directBar != null)
             {
-                foreach (GameObject go in Resources.FindObjectsOfTypeAll<GameObject>())
+                progressBarObject = directBar;
+            }
+            else
+            {
+                Slider[] sliders = FindObjectsByType<Slider>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                foreach (var s in sliders)
                 {
-                    if (go.hideFlags == HideFlags.None && (go.name.ToLower().Contains("barra de progreso") || go.name.ToLower().Contains("progressbar") || go.name.ToLower().Contains("progress bar")))
+                    string n = s.gameObject.name.ToLower();
+                    if (n.Contains("progreso") || n.Contains("progressbar") || n.Contains("barra"))
                     {
-                        if (go.GetComponent<Slider>() != null || go.GetComponentInChildren<Slider>() != null ||
-                            go.GetComponent<Image>() != null || go.GetComponentInChildren<Image>() != null)
-                        {
-                            progressBarObject = go;
-                            break;
-                        }
+                        progressBarObject = s.gameObject;
+                        break;
                     }
                 }
             }
@@ -171,10 +168,11 @@ public class RE_GameProgress : MonoBehaviour
     {
         try
         {
+            if (progressData == null) progressData = new GameProgressData();
+
             string json = JsonUtility.ToJson(progressData, true);
             PlayerPrefs.SetString(saveKey, json);
             PlayerPrefs.Save();
-            Debug.Log("[RE_GameProgress] Progreso guardado con éxito.");
         }
         catch (System.Exception e)
         {
@@ -183,7 +181,7 @@ public class RE_GameProgress : MonoBehaviour
     }
 
     /// <summary>
-    /// Carga la partida desde PlayerPrefs.
+    /// Carga la partida guardada desde PlayerPrefs.
     /// </summary>
     public void LoadProgress() 
     {
@@ -192,20 +190,25 @@ public class RE_GameProgress : MonoBehaviour
             try
             {
                 string json = PlayerPrefs.GetString(saveKey);
+                if (progressData == null) progressData = new GameProgressData();
                 JsonUtility.FromJsonOverwrite(json, progressData);
-                Debug.Log($"[RE_GameProgress] Progreso cargado con éxito. Tareas completadas: {progressData.completedTasks.Count}");
+
+                if (progressData.completedTasks == null)
+                {
+                    progressData.completedTasks = new List<string>();
+                }
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[RE_GameProgress] Partida corrupta. Iniciando por defecto: {e.Message}");
+                Debug.LogError($"[RE_GameProgress] Partida corrupta detectada. Iniciando valores por defecto: {e.Message}");
                 progressData = new GameProgressData();
             }
         }
         else
         {
-            Debug.Log("[RE_GameProgress] No se encontró partida guardada. Iniciando nueva.");
             progressData = new GameProgressData();
         }
+
         ActualizarUI(GetProgressPercentage());
     }
 
@@ -215,16 +218,22 @@ public class RE_GameProgress : MonoBehaviour
     public void ResetProgress()
     {
         PlayerPrefs.DeleteKey(saveKey);
+        PlayerPrefs.DeleteKey("HospitalGameProgress");
+        PlayerPrefs.DeleteKey("HospitalGam");
+        PlayerPrefs.Save();
+
         progressData = new GameProgressData();
         ActualizarUI(0f);
         Debug.Log("[RE_GameProgress] Progreso reseteado a 0%.");
     }
 
     /// <summary>
-    /// Borra las misiones del nivel actual manteniendo otros datos (Soft Reset).
+    /// Borra las misiones del nivel actual manteniendo otros datos.
     /// </summary>
     public void ResetLevelProgressOnly()
     {
+        if (progressData == null) progressData = new GameProgressData();
+
         progressData.completedTasks.Clear();
         progressData.reached25 = false;
         progressData.reached50 = false;
@@ -233,17 +242,17 @@ public class RE_GameProgress : MonoBehaviour
 
         ActualizarUI(0f);
         SaveProgress();
-        Debug.Log("[RE_GameProgress] Progreso de tareas del nivel reseteado a 0.");
     }
 
-    #region Métodos de Utilidad / Atajos (Lógica de Misiones)
-
     /// <summary>
-    /// Registra una tarea como completada y actualiza automáticamente el porcentaje y la interfaz.
+    /// Registra una tarea como completada y dispara eventos.
     /// </summary>
+    public void UpdateTaskProgress(string taskId, bool completed = true) { if (completed) CompleteTask(taskId); }
+
     public void CompleteTask(string taskId)
     {
         if (string.IsNullOrEmpty(taskId)) return;
+        if (progressData == null) progressData = new GameProgressData();
 
         if (!progressData.completedTasks.Contains(taskId))
         {
@@ -256,27 +265,18 @@ public class RE_GameProgress : MonoBehaviour
             ActualizarUI(currentPercent);
             SaveProgress();
 
-            Debug.Log($"[RE_GameProgress] ✓ Tarea completada: '{taskId}'. Total: {progressData.completedTasks.Count}/{totalMainTasks} ({currentPercent:0}%)");
-        }
-        else
-        {
-            Debug.Log($"[RE_GameProgress] La tarea '{taskId}' ya estaba completada anteriormente.");
+            Debug.Log($"[RE_GameProgress] Tarea completada: '{taskId}' ({progressData.completedTasks.Count}/{totalMainTasks} -> {currentPercent:0}%)");
         }
     }
 
-    /// <summary>
-    /// Calcula el porcentaje de avance (0 a 100) en base a las tareas completadas y el total.
-    /// </summary>
     public float GetProgressPercentage()
     {
+        if (progressData == null || progressData.completedTasks == null) return 0f;
         if (totalMainTasks <= 0) return 0f;
         float percent = ((float)progressData.completedTasks.Count / totalMainTasks) * 100f;
         return Mathf.Clamp(percent, 0f, 100f);
     }
 
-    /// <summary>
-    /// Revisa si se alcanzaron los hitos del 25%, 50%, 75% o 100% y dispara sus eventos correspondientes.
-    /// </summary>
     private void CheckProgressMilestones(float percentage)
     {
         if (percentage >= 25f && !progressData.reached25)
@@ -301,18 +301,15 @@ public class RE_GameProgress : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Devuelve si una tarea específica con el taskId dado ya fue completada.
-    /// </summary>
     public bool IsTaskCompleted(string taskId) 
     { 
-        if (string.IsNullOrEmpty(taskId)) return false;
+        if (string.IsNullOrEmpty(taskId) || progressData == null || progressData.completedTasks == null) return false;
         return progressData.completedTasks.Contains(taskId); 
     }
 
-    // Métodos de consulta amigables para saber si se ha interactuado con los diferentes roles
     public bool IsGuardiaCompleted() 
     { 
+        if (progressData == null || progressData.completedTasks == null) return false;
         foreach (string task in progressData.completedTasks) 
             if (task.ToLower().Contains("guardia")) return true; 
         return false; 
@@ -320,6 +317,7 @@ public class RE_GameProgress : MonoBehaviour
 
     public bool IsCivilCompleted() 
     { 
+        if (progressData == null || progressData.completedTasks == null) return false;
         foreach (string task in progressData.completedTasks) 
             if (task.ToLower().Contains("civil")) return true; 
         return false; 
@@ -327,26 +325,23 @@ public class RE_GameProgress : MonoBehaviour
 
     public bool IsEnfermeroCompleted() 
     { 
+        if (progressData == null || progressData.completedTasks == null) return false;
         foreach (string task in progressData.completedTasks) 
             if (task.ToLower().Contains("enfermero")) return true; 
         return false; 
     }
 
-    /// <summary>
-    /// Modifica los elementos visuales de la interfaz de usuario para mostrar el porcentaje actual.
-    /// </summary>
     public void ActualizarUI(float porcentaje)
     {
         DetectUIComponents();
 
         string textoFormateado = $"Progreso {porcentaje:0}%";
 
-        // 1. Actualizar texto de progreso (TextMeshPro o Legacy Text)
+        // 1. Texto de progreso
         if (progressTextObject != null)
         {
             TextMeshProUGUI textTMP = progressTextObject.GetComponent<TextMeshProUGUI>();
             if (textTMP == null) textTMP = progressTextObject.GetComponentInChildren<TextMeshProUGUI>();
-            
             if (textTMP != null) 
             {
                 textTMP.text = textoFormateado;
@@ -359,12 +354,11 @@ public class RE_GameProgress : MonoBehaviour
             }
         }
 
-        // 2. Actualizar barra de progreso (Slider o Image Fill)
+        // 2. Barra de progreso
         if (progressBarObject != null)
         {
             Slider slider = progressBarObject.GetComponent<Slider>();
             if (slider == null) slider = progressBarObject.GetComponentInChildren<Slider>();
-            
             if (slider != null)
             {
                 slider.value = (porcentaje / 100f) * slider.maxValue;
@@ -373,7 +367,6 @@ public class RE_GameProgress : MonoBehaviour
             {
                 Image image = progressBarObject.GetComponent<Image>();
                 if (image == null) image = progressBarObject.GetComponentInChildren<Image>();
-                
                 if (image != null) 
                 {
                     image.fillAmount = porcentaje / 100f;
@@ -381,5 +374,24 @@ public class RE_GameProgress : MonoBehaviour
             }
         }
     }
-    #endregion
+
+    /// <summary>
+    /// Limpia todos los suscriptores a eventos estáticos para evitar fugas de memoria.
+    /// </summary>
+    public static void ClearAllEventListeners()
+    {
+        OnProgressChanged = null;
+        OnProgress25 = null;
+        OnProgress50 = null;
+        OnProgress75 = null;
+        OnProgress100 = null;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+    }
 }

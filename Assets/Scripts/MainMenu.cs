@@ -1,68 +1,77 @@
-using UnityEngine; // Herramientas básicas de Unity
-using UnityEngine.SceneManagement; // Permite cargar diferentes niveles (escenas)
+using UnityEngine;
+using UnityEngine.SceneManagement;
 
-public class MainMenu : MonoBehaviour // Clase para controlar la pantalla principal del juego
+/// <summary>
+/// Controla el Menú Principal, inicializa el cursor y el tiempo,
+/// y arranca una partida nueva asegurando una limpieza completa de datos.
+/// </summary>
+public class MainMenu : MonoBehaviour
 {
-    [Header("Paneles de la UI")] // Sección en el Inspector para la interfaz
-    [Tooltip("Panel que contiene las instrucciones del juego (opcional).")] // Texto guía en Unity
-    [SerializeField] private GameObject instructionsPanel; // Variable para arrastrar el panel de instrucciones
+    [Header("Paneles de la UI")]
+    [Tooltip("Panel que contiene las instrucciones del juego (opcional).")]
+    [SerializeField] private GameObject instructionsPanel;
 
-    [Header("Configuración de Nivel")] // Sección para los niveles
-    [Tooltip("Nombre exacto de la escena del primer nivel.")] // Texto guía en Unity
-    [SerializeField] private string firstLevelSceneName = "Nivel 1"; // Nombre del mapa que cargará al darle "Jugar"
+    [Header("Configuración de Nivel")]
+    [Tooltip("Nombre de la escena del primer nivel a cargar.")]
+    [SerializeField] private string firstLevelSceneName = "Nivel 1";
 
-    /// <summary>
-    /// Inicia el juego cargando el primer nivel (utiliza transición suave si está disponible).
-    /// </summary>
-    public void PlayGame() // Función que se activa al presionar el botón "Jugar"
+    private void Start()
     {
-        // Borrar el progreso guardado para empezar una partida totalmente nueva
-        PlayerPrefs.DeleteKey("HospitalGameProgress"); // Borramos la clave principal de guardado
-        PlayerPrefs.DeleteKey("HospitalGam"); // Borramos cualquier otra clave residual
-        PlayerPrefs.Save(); // Confirmamos el borrado en el disco duro
+        // Garantizar tiempo normal y cursor disponible en el menú
+        Time.timeScale = 1f;
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
 
-        // Si el sistema de progreso del juego ya estaba cargado en memoria...
-        if (RE_GameProgress.Instance != null)
+        if (instructionsPanel != null)
         {
-            RE_GameProgress.Instance.ResetProgress(); // Lo reseteamos internamente
-        }
-
-        // Si tenemos un sistema de transición (pantalla en negro que se aclara)
-        if (RE_LevelTransitionManager.Instance != null)
-        {
-            RE_LevelTransitionManager.Instance.TransitionToScene(firstLevelSceneName); // Usamos transición
-        }
-        else // Si no hay transición
-        {
-            SceneManager.LoadScene(firstLevelSceneName); // Cargamos la escena de golpe
+            instructionsPanel.SetActive(false);
         }
     }
 
     /// <summary>
-    /// Muestra u oculta el panel de instrucciones.
+    /// Limpia todos los datos guardados e inicia el primer nivel.
     /// </summary>
-    public void ToggleInstructions(bool show) // Función para el botón de "Instrucciones". Recibe un true o false
+    public void PlayGame()
     {
-        if (instructionsPanel != null) // Nos aseguramos que sí conectaron un panel en el Inspector
+        Time.timeScale = 1f;
+
+        // Limpieza profunda de datos previos para iniciar una partida fresca
+        PlayerPrefs.DeleteKey("HospitalGameProgress");
+        PlayerPrefs.DeleteKey("HospitalGam");
+        PlayerPrefs.Save();
+
+        if (RE_GameProgress.Instance != null)
         {
-            instructionsPanel.SetActive(show); // Lo mostramos o lo ocultamos según el valor de 'show'
+            RE_GameProgress.Instance.ResetProgress();
+        }
+
+        string targetScene = !string.IsNullOrEmpty(firstLevelSceneName) ? firstLevelSceneName : "Nivel 1";
+
+        if (RE_LevelTransitionManager.Instance != null)
+        {
+            RE_LevelTransitionManager.Instance.TransitionToScene(targetScene);
         }
         else
         {
-            Debug.LogWarning("No se asignó el panel de instrucciones en el inspector del MainMenu."); // Aviso de error
+            SceneManager.LoadScene(RE_LevelTransitionManager.ResolveValidSceneName(targetScene));
         }
     }
 
-    /// <summary>
-    /// Cierra el juego (funciona en compilación y detiene el playmode en el editor).
-    /// </summary>
-    public void QuitGame() // Función para el botón "Salir"
+    public void ToggleInstructions(bool show)
     {
-        Debug.Log("Cerrando el juego..."); // Mensaje en la consola
-        Application.Quit(); // Cierra el programa (solo funciona en el juego ya exportado)
+        if (instructionsPanel != null)
+        {
+            instructionsPanel.SetActive(show);
+        }
+    }
 
-        #if UNITY_EDITOR // Si estamos dentro del motor de Unity...
-        UnityEditor.EditorApplication.isPlaying = false; // Detenemos la simulación del botón Play
-        #endif
+    public void QuitGame()
+    {
+        Debug.Log("[MainMenu] Cerrando aplicación...");
+        Application.Quit();
+
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#endif
     }
 }
