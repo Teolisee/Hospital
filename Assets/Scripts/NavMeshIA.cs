@@ -1,30 +1,37 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.AI;
 
+/// <summary>
+/// Controla la rutina de patrullaje de un NPC usando NavMesh y sincroniza su animación.
+/// El nombre de la clase coincide con el nombre del archivo 'NavMeshIA' para compatibilidad en Unity.
+/// </summary>
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(Animator))]
-public class NpcRutina : MonoBehaviour
+public class NavMeshIA : MonoBehaviour
 {
     [Header("Puntos de destino")]
+    [Tooltip("Puntos de patrullaje por los cuales el NPC se moverá en bucle.")]
     public Transform[] puntos;
 
-    [Header("Configuracion")]
+    [Header("Configuración")]
+    [Tooltip("Tiempo de espera en segundos al llegar a cada punto.")]
     public float tiempoEspera = 2f;
 
-    [Header("Animacion")]
-    [Tooltip("Nombre del parametro Float en el Animator que controla Idle/Walk")]
+    [Header("Animación")]
+    [Tooltip("Nombre del parámetro Float en el Animator que controla Idle/Walk.")]
     public string parametroVelocidad = "Speed";
-    [Tooltip("Suaviza la transicion de velocidad en el Animator")]
+
+    [Tooltip("Suaviza la transición de velocidad en el Animator.")]
     public float suavizadoAnimacion = 0.15f;
 
     private NavMeshAgent agent;
     private Animator animator;
     private int indice = 0;
     private bool esperando = false;
+    private int velocidadParamHash = 0;
     private bool tieneParametroVelocidad = false;
-    private bool parametroComprobado = false;
 
-    void Start()
+    private void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();
@@ -39,28 +46,32 @@ public class NpcRutina : MonoBehaviour
         {
             animator.applyRootMotion = false;
         }
+    }
 
+    private void Start()
+    {
         if (puntos != null && puntos.Length > 0)
         {
             IrAlSiguientePunto();
         }
         else
         {
-            // NPC estatico sin puntos de patrullaje asignados: permanece quieto en Idle
-            if (agent != null && agent.isOnNavMesh)
+            // NPC estático sin puntos de patrullaje asignados: permanece quieto en Idle
+            if (agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
             {
                 agent.isStopped = true;
             }
         }
     }
 
-    void Update()
+    private void Update()
     {
         SincronizarAnimacion();
 
         if (puntos == null || puntos.Length == 0) return;
-        if (esperando || agent == null || !agent.isOnNavMesh) return;
+        if (esperando || agent == null || !agent.isActiveAndEnabled || !agent.isOnNavMesh) return;
 
+        // Comprobar si llegó a su destino actual
         if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
         {
             if (!agent.hasPath || agent.velocity.sqrMagnitude < 0.01f)
@@ -71,40 +82,88 @@ public class NpcRutina : MonoBehaviour
         }
     }
 
-    void SincronizarAnimacion()
-    {
-        if (animator == null) return;
+    private bool parametroComprobado = false;
 
-        if (!parametroComprobado)
+    private void VerificarParametroVelocidad()
+    {
+        // Esperar a que el Animator esté inicializado: antes de eso 'parameters' puede venir vacío.
+        if (animator == null || !animator.isActiveAndEnabled || !animator.isInitialized) return;
+        parametroComprobado = true;
+
+        if (animator.runtimeAnimatorController == null || string.IsNullOrEmpty(parametroVelocidad))
         {
-            parametroComprobado = true;
-            if (animator.runtimeAnimatorController != null)
-            {
-                foreach (var param in animator.parameters)
-                {
-                    if (param.name == parametroVelocidad)
-                    {
-                        tieneParametroVelocidad = true;
-                        break;
-                    }
-                }
-            }
+            tieneParametroVelocidad = false;
+            return;
         }
 
-        if (tieneParametroVelocidad)
+        velocidadParamHash = Animator.StringToHash(parametroVelocidad);
+        tieneParametroVelocidad = false;
+
+        foreach (var param in animator.parameters)
         {
-            float velocidadActual = agent != null ? agent.velocity.magnitude : 0f;
-            animator.SetFloat(parametroVelocidad, velocidadActual, suavizadoAnimacion, Time.deltaTime);
+            if (param.nameHash == velocidadParamHash)
+            {
+                tieneParametroVelocidad = true;
+                break;
+            }
         }
     }
 
-    void IrAlSiguientePunto()
+    private void SincronizarAnimacion()
+    {
+        if (animator == null) return;
+        if (!parametroComprobado) VerificarParametroVelocidad();
+        if (!tieneParametroVelocidad) return;
+
+        float velocidadActual = (agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh) ? agent.velocity.magnitude : 0f;
+        animator.SetFloat(velocidadParamHash, velocidadActual, suavizadoAnimacion, Time.deltaTime);
+    }
+
+    private void IrAlSiguientePunto()
     {
         esperando = false;
 
-        if (puntos == null || puntos.Length == 0 || agent == null || !agent.isOnNavMesh) return;
+        if (puntos == null || puntos.Length == 0 || agent == null || !agent.isActiveAndEnabled || !agent.isOnNavMesh) return;
 
-        agent.SetDestination(puntos[indice].position);
-        indice = (indice + 1) % puntos.Length;
+        // Filtrar posibles puntos nulos en la lista
+        int intentos = 0;
+        while (puntos[indice] == null && intentos < puntos.Length)
+        {
+            indice = (indice + 1) % puntos.Length;
+            intentos++;
+        }
+
+        if (puntos[indice] != null)
+        {
+            agent.isStopped = false;
+            agent.SetDestination(puntos[indice].position);
+            indice = (indice + 1) % puntos.Length;
+        }
+    }
+
+    private void OnDisable()
+    {
+        CancelInvoke(nameof(IrAlSiguientePunto));
+        esperando = false;
+
+        if (agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
+        {
+            agent.isStopped = true;
+        }
+
+        if (animator != null && tieneParametroVelocidad)
+        {
+            animator.SetFloat(velocidadParamHash, 0f);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        CancelInvoke();
     }
 }
+
+/// <summary>
+/// Alias para mantener retrocompatibilidad en caso de referencias históricas al nombre anterior.
+/// </summary>
+public class NpcRutina : NavMeshIA { }

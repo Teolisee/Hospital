@@ -1,45 +1,43 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 using TMPro;
-using UnityEngine.UI;
+using UnityEngine.InputSystem;
 
-// -----------------------------------------------------------------------------
-// SCRIPT: RE_PlayerInteraction
-// METÁFORA: "El Radar y la Mano del Jugador"
-// Detecta NPCs y objetos interactuables alrededor del jugador o al frente de la cámara,
-// muestra avisos flotantes en pantalla y ejecuta la acción al presionar la tecla 'E'.
-// -----------------------------------------------------------------------------
+/// <summary>
+/// Gestiona la deteccion y ejecucion de interacciones del jugador (IInteractable).
+/// Activa el Canvas 3D de visualizacion propio de cada NPC (sobre su cabeza).
+/// No dibuja cuadros debug en OnGUI para no ensuciar la interfaz del juego.
+/// </summary>
 public class RE_PlayerInteraction : MonoBehaviour 
 {
-    [Header("Ajustes de Detección")]
-    [Tooltip("Distancia máxima de interacción en metros.")]
-    public float sphereRadius = 3.5f;
+    [Header("Configuracion de Deteccion")]
+    [Tooltip("Distancia maxima a la que el jugador puede interactuar con objetos.")]
+    public float sphereRadius = 2.5f;
 
-    [Tooltip("Capas a considerar para interactuar (dejar en Everything o Default).")]
-    public LayerMask interactableMask = ~0; // Todo por defecto para evitar ignorar NPCs
+    [Tooltip("Capas fisicas donde buscar interactuables.")]
+    public LayerMask interactableMask = ~0;
 
-    [Header("Referencias Visuales (Opcional)")]
-    [Tooltip("Objeto o texto de UI en pantalla para mostrar el aviso 'Presiona E' (se auto-detecta si está vacío).")]
-    [SerializeField] private GameObject promptUIObject;
-    [SerializeField] private TextMeshProUGUI promptUIText;
+    [Tooltip("Angulo minimo de vision hacia el interactuable (0 = 90 grados, 0.25 = ~75 grados).")]
+    public float minFacingDot = 0.2f;
 
-    [Header("Ajustes de UI Flotante")]
-    [Tooltip("Muestra un indicador en pantalla cuando hay un interactuable cerca.")]
-    public bool mostrarIndicadorEnPantalla = true;
+    [Header("Interfaz de Usuario")]
+    [Tooltip("Objeto Canvas o contenedor de la UI que avisa al jugador (opcional).")]
+    public GameObject promptUIObject;
+
+    [Tooltip("Componente TextMeshPro donde se muestra el mensaje de interaccion (opcional).")]
+    public TextMeshProUGUI promptUIText;
+
+    [Tooltip("Si es true, muestra un indicador en pantalla solo si hay un HUD asignado.")]
+    public bool mostrarIndicadorEnPantalla = false;
 
     private IInteractable currentInteractable;
     private GameObject currentInteractableGameObject;
     private GameObject lastPromptCanvas;
-    private Transform cameraTransform;
+
+    // Buffer fijo para evitar asignaciones de memoria (GC allocs) cada frame
+    private readonly Collider[] hitBuffer = new Collider[16];
 
     private void Start() 
     {
-        if (Camera.main != null)
-        {
-            cameraTransform = Camera.main.transform;
-        }
-
-        // Buscar texto de prompt en la escena si no se asignó en el Inspector
         DetectPromptUI();
     }
 
@@ -47,72 +45,74 @@ public class RE_PlayerInteraction : MonoBehaviour
     {
         if (promptUIObject == null)
         {
-            // Intentamos buscar un objeto llamado "Prompt", "InteractPrompt" o "AvisoE"
-            foreach (GameObject go in Resources.FindObjectsOfTypeAll<GameObject>())
+            GameObject pObj = GameObject.Find("Prompt");
+            if (pObj == null) pObj = GameObject.Find("InteractPrompt");
+            if (pObj == null) pObj = GameObject.Find("AvisoE");
+            if (pObj != null)
             {
-                if (go.hideFlags == HideFlags.None && 
-                   (go.name.ToLower().Contains("prompt") || go.name.ToLower().Contains("interactprompt") || go.name.ToLower().Contains("avisoe")))
-                {
-                    promptUIObject = go;
-                    promptUIText = go.GetComponent<TextMeshProUGUI>() ?? go.GetComponentInChildren<TextMeshProUGUI>();
-                    break;
-                }
+                promptUIObject = pObj;
+                promptUIText = pObj.GetComponent<TextMeshProUGUI>();
+                if (promptUIText == null) promptUIText = pObj.GetComponentInChildren<TextMeshProUGUI>();
             }
         }
 
         if (promptUIObject != null && promptUIText == null)
         {
-            promptUIText = promptUIObject.GetComponent<TextMeshProUGUI>() ?? promptUIObject.GetComponentInChildren<TextMeshProUGUI>();
+            promptUIText = promptUIObject.GetComponent<TextMeshProUGUI>();
+            if (promptUIText == null) promptUIText = promptUIObject.GetComponentInChildren<TextMeshProUGUI>();
         }
     }
 
     private void Update()
     {
-        // Si hay algún diálogo abierto, ocultar avisos y no interactuar
-        if (RE_NPCInteraction.IsAnyDialogueOpen)
+        // 0. Si el nivel ya fue completado (pantalla de Victoria), suspender interaccion y apagar prompts
+        if (RE_LevelComplete.Instance != null && RE_LevelComplete.Instance.IsLevelCompleted())
         {
-            if (promptUIObject != null && promptUIObject.activeSelf) promptUIObject.SetActive(false);
-            if (lastPromptCanvas != null && lastPromptCanvas.activeSelf)
-            {
-                lastPromptCanvas.SetActive(false);
-                lastPromptCanvas = null;
-            }
+            OcultarAvisos();
+            currentInteractable = null;
+            currentInteractableGameObject = null;
             return;
         }
 
-        // 1. Escanear el entorno buscando interactuables
+        // Si hay algun dialogo abierto, ocultar avisos y suspender interaccion
+        if (RE_NPCInteraction.IsAnyDialogueOpen)
+        {
+            OcultarAvisos();
+            return;
+        }
+
+        // 1. Escanear el entorno de forma no-alocativa y considerando orientacion
         FindInteractable();
 
-        // 2. Gestionar avisos visuales (Canvas flotante del NPC y/o HUD)
+        // 2. Actualizar avisos visuales (Canvas flotante 3D sobre el NPC)
         UpdateVisualPrompts();
 
-        // 3. Detectar si el jugador presiona la tecla E o botón de interacción
+        // 3. Procesar pulsacion de interaccion (tecla E)
         if (WasInteractPressed())
         {
             if (currentInteractable != null)
             {
-                Debug.Log($"[RE_PlayerInteraction] ✓ Interactuando con: {currentInteractable.GetInteractPrompt()}");
+                Debug.Log($"[RE_PlayerInteraction] Interactuando con: {currentInteractable.GetInteractPrompt()}");
                 currentInteractable.Interact();
-            }
-            else
-            {
-                Debug.Log("[RE_PlayerInteraction] Presionaste E pero no hay ningún interactuable a menos de " + sphereRadius + "m.");
             }
         }
     }
 
-    /// <summary>
-    /// Detecta entradas tanto del nuevo Input System como del Input tradicional de Unity.
-    /// </summary>
+    private void OcultarAvisos()
+    {
+        if (promptUIObject != null && promptUIObject.activeSelf) promptUIObject.SetActive(false);
+        if (lastPromptCanvas != null && lastPromptCanvas.activeSelf)
+        {
+            lastPromptCanvas.SetActive(false);
+            lastPromptCanvas = null;
+        }
+    }
+
     private bool WasInteractPressed()
     {
-        // 1. Teclado en Input System moderno
         if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame) return true;
-
-        // 2. Gamepad en Input System moderno (Botón A / Cruz / X)
         if (Gamepad.current != null && (Gamepad.current.buttonSouth.wasPressedThisFrame || Gamepad.current.buttonWest.wasPressedThisFrame)) return true;
 
-        // 3. Entrada clásica de Unity (Legacy Input Manager)
         try
         {
             if (Input.GetKeyDown(KeyCode.E) || Input.GetKeyDown(KeyCode.Return) || Input.GetButtonDown("Submit"))
@@ -125,47 +125,53 @@ public class RE_PlayerInteraction : MonoBehaviour
         return false;
     }
 
-    /// <summary>
-    /// Escanea objetos cercanos usando una esfera centrada en el torso del jugador y un raycast frontal.
-    /// </summary>
     private void FindInteractable()
     {
-        Vector3 playerCenter = transform.position + Vector3.up * 1.0f; // Centro del personaje (a la altura del pecho)
+        Vector3 playerCenter = transform.position + Vector3.up * 1.0f;
+        Vector3 playerForward = transform.forward;
+        playerForward.y = 0;
+        if (playerForward.sqrMagnitude > 0.001f) playerForward.Normalize();
 
         IInteractable bestInteractable = null;
         GameObject bestGameObject = null;
         float bestDistance = Mathf.Infinity;
 
-        // 1. Detección por esfera alrededor del jugador
-        Collider[] colliders = Physics.OverlapSphere(playerCenter, sphereRadius, interactableMask);
-        if (colliders == null || colliders.Length == 0)
-        {
-            colliders = Physics.OverlapSphere(playerCenter, sphereRadius);
-        }
+        // 1. Deteccion no-alocativa mediante esfera de fisica
+        int hitCount = Physics.OverlapSphereNonAlloc(playerCenter, sphereRadius, hitBuffer, interactableMask);
 
-        if (colliders != null)
+        for (int i = 0; i < hitCount; i++)
         {
-            foreach (Collider col in colliders)
+            Collider col = hitBuffer[i];
+            if (col == null || col.gameObject == gameObject) continue;
+
+            IInteractable interactable = col.GetComponent<IInteractable>();
+            if (interactable == null || (interactable as Object) == null) interactable = col.GetComponentInParent<IInteractable>();
+            if (interactable == null || (interactable as Object) == null) interactable = col.GetComponentInChildren<IInteractable>();
+
+            if (interactable == null && col.attachedRigidbody != null)
             {
-                if (col.gameObject == gameObject) continue; // Ignorar al propio jugador
+                interactable = col.attachedRigidbody.GetComponent<IInteractable>();
+            }
 
-                IInteractable interactable = col.GetComponent<IInteractable>() ?? 
-                                             col.GetComponentInParent<IInteractable>() ?? 
-                                             col.GetComponentInChildren<IInteractable>();
-
-                if (interactable == null && col.attachedRigidbody != null)
+            if (interactable != null)
+            {
+                Vector3 toTarget = col.bounds.center - playerCenter;
+                float dist = toTarget.magnitude;
+                if (dist <= sphereRadius)
                 {
-                    interactable = col.attachedRigidbody.GetComponent<IInteractable>();
-                }
+                    // Validar angulo de vision: el jugador debe estar mirando hacia el interactuable
+                    Vector3 flatToTarget = toTarget;
+                    flatToTarget.y = 0;
+                    if (flatToTarget.sqrMagnitude > 0.01f)
+                    {
+                        float dot = Vector3.Dot(playerForward, flatToTarget.normalized);
+                        if (dist > 1.2f && dot < minFacingDot)
+                        {
+                            continue; // Ignorar interactuables a la espalda o a los lados
+                        }
+                    }
 
-                if (interactable != null)
-                {
-                    // Medir distancia al punto más cercano del collider o transform
-                    Vector3 targetPos = col.bounds.center;
-                    float dist = Vector3.Distance(playerCenter, targetPos);
-
-                    // Si está dentro de la distancia máxima y es el más cercano
-                    if (dist < bestDistance && dist <= sphereRadius)
+                    if (dist < bestDistance)
                     {
                         bestDistance = dist;
                         bestInteractable = interactable;
@@ -175,33 +181,39 @@ public class RE_PlayerInteraction : MonoBehaviour
             }
         }
 
-        // 2. Fallback de seguridad: Si los colliders fallaron, buscar por proximidad a los scripts RE_NPCInteraction
+        // 2. Busqueda de seguridad sobre lista estatica de NPCs
         if (bestInteractable == null)
         {
-            foreach (RE_NPCInteraction npc in FindObjectsByType<RE_NPCInteraction>(FindObjectsSortMode.None))
+            for (int i = 0; i < RE_NPCInteraction.ActiveNPCs.Count; i++)
             {
-                if (npc == null || !npc.enabled || !npc.gameObject.activeInHierarchy) continue;
-                
-                // Medir distancia a la posición del NPC o de sus hijos
-                float dist = Vector3.Distance(playerCenter, npc.transform.position);
-                
-                // Si tiene modelo hijo, medir también la distancia al modelo
-                foreach (Transform child in npc.transform)
-                {
-                    float childDist = Vector3.Distance(playerCenter, child.position);
-                    if (childDist < dist) dist = childDist;
-                }
+                RE_NPCInteraction npc = RE_NPCInteraction.ActiveNPCs[i];
+                if (npc == null || !npc.isActiveAndEnabled) continue;
 
-                if (dist < bestDistance && dist <= sphereRadius)
+                Vector3 toNpc = (npc.transform.position + Vector3.up * 1.0f) - playerCenter;
+                float dist = toNpc.magnitude;
+                if (dist <= sphereRadius)
                 {
-                    bestDistance = dist;
-                    bestInteractable = npc;
-                    bestGameObject = npc.gameObject;
+                    Vector3 flatToNpc = toNpc;
+                    flatToNpc.y = 0;
+                    if (flatToNpc.sqrMagnitude > 0.01f)
+                    {
+                        float dot = Vector3.Dot(playerForward, flatToNpc.normalized);
+                        if (dist > 1.2f && dot < minFacingDot)
+                        {
+                            continue;
+                        }
+                    }
+
+                    if (dist < bestDistance)
+                    {
+                        bestDistance = dist;
+                        bestInteractable = npc;
+                        bestGameObject = npc.gameObject;
+                    }
                 }
             }
         }
 
-        // 3. Actualizar el interactuable actual
         if (bestInteractable != currentInteractable)
         {
             currentInteractable = bestInteractable;
@@ -210,11 +222,10 @@ public class RE_PlayerInteraction : MonoBehaviour
     }
 
     /// <summary>
-    /// Activa/desactiva los avisos visuales (Canvas de visualización sobre el NPC o HUD de pantalla).
+    /// Activa el Canvas flotante 3D que cada NPC tiene colocado sobre su cabeza en la escena.
     /// </summary>
     private void UpdateVisualPrompts()
     {
-        // Manejo de Canvas de visualización 3D en el NPC
         if (currentInteractableGameObject != null)
         {
             Transform rootTransform = currentInteractableGameObject.transform;
@@ -224,11 +235,11 @@ public class RE_PlayerInteraction : MonoBehaviour
                 if (parentNPC != null) rootTransform = parentNPC.transform;
             }
 
-            // Buscar si el NPC tiene un Canvas de visualización flotante
             Transform visualCanvasTransform = null;
             foreach (Transform child in rootTransform.GetComponentsInChildren<Transform>(true))
             {
-                if (child.name.ToLower().Contains("visualizacion") || child.name.ToLower().Contains("visualización"))
+                string n = child.name.ToLower();
+                if (n.Contains("visualizacion") || n.Contains("visualización"))
                 {
                     visualCanvasTransform = child;
                     break;
@@ -254,7 +265,7 @@ public class RE_PlayerInteraction : MonoBehaviour
             }
         }
 
-        // Manejo del texto de prompt en UI 2D (HUD)
+        // Si existe un HUD formal en Canvas 2D
         if (promptUIObject != null)
         {
             if (currentInteractable != null)
@@ -277,44 +288,13 @@ public class RE_PlayerInteraction : MonoBehaviour
         return currentInteractable;
     }
 
-    // Dibujar aviso en pantalla mediante OnGUI si no hay HUD configurado
-    private void OnGUI()
-    {
-        if (RE_NPCInteraction.IsAnyDialogueOpen || !mostrarIndicadorEnPantalla || promptUIObject != null) return;
-
-        if (currentInteractable != null)
-        {
-            GUIStyle style = new GUIStyle(GUI.skin.box);
-            style.fontSize = 18;
-            style.fontStyle = FontStyle.Bold;
-            style.normal.textColor = Color.white;
-            style.alignment = TextAnchor.MiddleCenter;
-
-            string mensaje = currentInteractable.GetInteractPrompt();
-            if (string.IsNullOrEmpty(mensaje)) mensaje = "Presiona [E] para interactuar";
-
-            float ancho = Mathf.Max(320, mensaje.Length * 12);
-            float alto = 45;
-            float x = (Screen.width - ancho) / 2f;
-            float y = Screen.height - 110;
-
-            GUI.Box(new Rect(x, y, ancho, alto), $"[E] {mensaje}", style);
-        }
-    }
-
     private void OnDisable()
     {
-        if (promptUIObject != null && promptUIObject.activeSelf) promptUIObject.SetActive(false);
-        if (lastPromptCanvas != null && lastPromptCanvas.activeSelf)
-        {
-            lastPromptCanvas.SetActive(false);
-            lastPromptCanvas = null;
-        }
+        OcultarAvisos();
         currentInteractable = null;
         currentInteractableGameObject = null;
     }
 
-    // Dibuja la esfera amarilla en el editor de Unity
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.yellow;

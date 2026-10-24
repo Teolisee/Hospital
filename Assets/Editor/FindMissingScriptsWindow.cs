@@ -18,16 +18,24 @@ public class FindMissingScriptsWindow : EditorWindow
         {
             FindInActiveScene();
         }
+
+        EditorGUILayout.Space();
+
+        if (GUILayout.Button("Restablecer Progreso Guardado (PlayerPrefs)", GUILayout.Height(30)))
+        {
+            ResetSavedProgress();
+        }
     }
 
     private static void FindInActiveScene()
     {
-        GameObject[] allGameObjects = GameObject.FindObjectsByType<GameObject>(FindObjectsSortMode.None);
+        Transform[] allTransforms = GameObject.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         int missingCount = 0;
         int affectedObjectsCount = 0;
 
-        foreach (GameObject go in allGameObjects)
+        foreach (Transform t in allTransforms)
         {
+            GameObject go = t.gameObject;
             Component[] components = go.GetComponents<Component>();
             bool hasMissingInObject = false;
 
@@ -37,7 +45,7 @@ public class FindMissingScriptsWindow : EditorWindow
                 {
                     missingCount++;
                     hasMissingInObject = true;
-                    Debug.LogWarning($"[Missing Script] El GameObject '{go.name}' tiene un componente faltante (índice {i}).", go);
+                    Debug.LogWarning($"[Missing Script] El GameObject '{go.name}' tiene un componente faltante (Índice {i}).", go);
                 }
             }
 
@@ -53,13 +61,11 @@ public class FindMissingScriptsWindow : EditorWindow
     [MenuItem("Tools/Restablecer Progreso Guardado")]
     public static void ResetSavedProgress()
     {
-        // Buscar el componente GameProgress en la escena para leer su clave de guardado real
         RE_GameProgress gp = GameObject.FindAnyObjectByType<RE_GameProgress>();
-        string keyToDelete = "HospitalGameProgress"; // Fallback por defecto
+        string keyToDelete = "HospitalGameProgress";
 
         if (gp != null)
         {
-            // Usar SerializedObject para leer el campo privado 'saveKey' configurado en el inspector
             SerializedObject so = new SerializedObject(gp);
             SerializedProperty prop = so.FindProperty("saveKey");
             if (prop != null && !string.IsNullOrEmpty(prop.stringValue))
@@ -68,14 +74,12 @@ public class FindMissingScriptsWindow : EditorWindow
             }
         }
 
-        // Borrar la clave detectada
         if (PlayerPrefs.HasKey(keyToDelete))
         {
             PlayerPrefs.DeleteKey(keyToDelete);
             Debug.Log($"[Editor] Se eliminó la clave de guardado activa: '{keyToDelete}'");
         }
 
-        // Borrar variantes comunes por si acaso
         PlayerPrefs.DeleteKey("HospitalGameProgress");
         PlayerPrefs.DeleteKey("HospitalGam");
         PlayerPrefs.Save();
