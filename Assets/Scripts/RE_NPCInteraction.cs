@@ -40,6 +40,12 @@ public class RE_NPCInteraction : MonoBehaviour, IInteractable
     [Tooltip("Si esta activo, este NPC actuara como el punto de facturacion que completa el nivel.")]
     public bool esNPCFacturacion = false;
 
+    [Tooltip("Si esta activo, exige haber hablado con Guardia, Civil y Enfermero antes de habilitar el minijuego de facturacion.")]
+    public bool requiereNPCsPrevios = true;
+
+    [Tooltip("Referencia opcional al minijuego Bruteforce. Si esta vacio, se detecta automaticamente en la escena.")]
+    public BruteforceMinigame bruteforceMinigame;
+
     [Tooltip("Mensaje que muestra si intentas facturar pero te faltan tareas por completar.")]
     [TextArea(3, 5)] 
     public string mensajeTareasPendientes = "Aun no puedes facturar. Habla con los demas primero.";
@@ -227,30 +233,39 @@ public class RE_NPCInteraction : MonoBehaviour, IInteractable
 
     private void Update()
     {
-        // Si ESTE NPC tiene su dialogo abierto y el usuario presiona Espacio, Enter o Escape, cerrar dialogo
+        // Si ESTE NPC tiene su dialogo abierto y el usuario presiona Espacio, Enter o Escape
         if (CurrentActiveNPC == this && IsAnyDialogueOpen && npcDialogosCanvas != null && npcDialogosCanvas.activeSelf)
         {
             if (Time.frameCount > frameDialogoAbierto + 10)
             {
-                bool cerrarInput = false;
+                bool continuarInput = false;
+                bool cancelarInput = false;
+
                 if (Keyboard.current != null)
                 {
-                    cerrarInput = Keyboard.current.spaceKey.wasPressedThisFrame || 
-                                  Keyboard.current.enterKey.wasPressedThisFrame ||
-                                  Keyboard.current.escapeKey.wasPressedThisFrame;
+                    continuarInput = Keyboard.current.spaceKey.wasPressedThisFrame || 
+                                     Keyboard.current.enterKey.wasPressedThisFrame ||
+                                     Keyboard.current.numpadEnterKey.wasPressedThisFrame;
+                    cancelarInput = Keyboard.current.escapeKey.wasPressedThisFrame;
                 }
-                if (!cerrarInput)
+
+                if (!continuarInput && !cancelarInput)
                 {
                     try
                     {
-                        cerrarInput = Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Escape);
+                        continuarInput = Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
+                        cancelarInput = Input.GetKeyDown(KeyCode.Escape);
                     }
                     catch { }
                 }
 
-                if (cerrarInput)
+                if (continuarInput)
                 {
                     CerrarDialogo();
+                }
+                else if (cancelarInput)
+                {
+                    CancelarDialogo();
                 }
             }
         }
@@ -291,17 +306,19 @@ public class RE_NPCInteraction : MonoBehaviour, IInteractable
 
             if (esNPCFacturacion) 
             {
-                // La Recepcionista verifica explicitamente que se haya hablado con los 3 NPCs previos
+                // La Recepcionista verifica si se hablo con los 3 NPCs previos
                 bool guardiaListo = RE_GameProgress.Instance != null && RE_GameProgress.Instance.IsGuardiaCompleted();
                 bool civilListo = RE_GameProgress.Instance != null && RE_GameProgress.Instance.IsCivilCompleted();
                 bool enfermeroListo = RE_GameProgress.Instance != null && RE_GameProgress.Instance.IsEnfermeroCompleted();
 
-                if (guardiaListo && civilListo && enfermeroListo)
+                bool requisitosCumplidos = !requiereNPCsPrevios || (guardiaListo && civilListo && enfermeroListo) || (ActiveNPCs.Count <= 1);
+
+                if (requisitosCumplidos)
                 {
                     puedeFacturar = true;
                     textoAMostrar = !string.IsNullOrEmpty(npcDialogue) 
                         ? npcDialogue 
-                        : "¡Excelente trabajo! Has completado todas las revisiones con el Guardia, el Civil y el Enfermero. Tu cita ha sido facturada con exito.";
+                        : "¡Excelente trabajo! Has completado todas las revisiones previas. Presiona Continuar para acceder al sistema.";
                 }
                 else 
                 {
@@ -353,9 +370,12 @@ public class RE_NPCInteraction : MonoBehaviour, IInteractable
         }
     }
 
+    /// <summary>
+    /// Cierra el dialogo al presionar el boton Continuar o pulsar Espacio/Enter.
+    /// Si es la Recepcionista y ya puede facturar, arranca el minijuego Bruteforce.
+    /// </summary>
     public void CerrarDialogo() 
     {
-        // Solo el NPC actualmente activo puede procesar su cierre
         if (CurrentActiveNPC != null && CurrentActiveNPC != this)
         {
             return;
@@ -374,6 +394,87 @@ public class RE_NPCInteraction : MonoBehaviour, IInteractable
             npcDialogosCanvas.SetActive(false); 
         }
 
+        // Si es la recepcionista y ya puede facturar:
+        // Al darle "Continuar", soltamos el minijuego Bruteforce en lugar de ganar directamente!
+        if (esNPCFacturacion && puedeFacturar)
+        {
+            IniciarMinijuegoBruteforce();
+            return;
+        }
+
+        // Si es otro NPC o la recepcionista aun tiene tareas pendientes:
+        RestaurarControlJugador();
+        RegistrarProgresoNPC();
+    }
+
+    /// <summary>
+    /// Cancela el dialogo (tecla Escape) sin iniciar el minijuego.
+    /// </summary>
+    public void CancelarDialogo()
+    {
+        if (CurrentActiveNPC != null && CurrentActiveNPC != this) return;
+
+        CurrentActiveNPC = null;
+        IsAnyDialogueOpen = false;
+
+        if (botonContinuar != null) botonContinuar.onClick.RemoveListener(CerrarDialogo);
+        if (npcDialogosCanvas != null) npcDialogosCanvas.SetActive(false);
+
+        RestaurarControlJugador();
+    }
+
+    private void IniciarMinijuegoBruteforce()
+    {
+        // Mantener cursor libre y pausar jugador durante el minijuego
+        Cursor.lockState = CursorLockMode.None; 
+        Cursor.visible = true; 
+
+        if (RE_PlayerHealth.Instance != null) RE_PlayerHealth.Instance.SetPaused(true);
+
+        RE_PlayerMovement pm = FindFirstObjectByType<RE_PlayerMovement>();
+        if (pm != null) pm.enabled = false;
+
+        // Localizar el componente BruteforceMinigame
+        BruteforceMinigame minigame = bruteforceMinigame;
+        if (minigame == null) minigame = BruteforceMinigame.Instance;
+        if (minigame == null) minigame = FindFirstObjectByType<BruteforceMinigame>(FindObjectsInactive.Include);
+
+        if (minigame == null)
+        {
+            GameObject mGo = new GameObject("BruteforceMinigame");
+            minigame = mGo.AddComponent<BruteforceMinigame>();
+        }
+
+        bruteforceMinigame = minigame;
+
+        minigame.Open((bool exito) =>
+        {
+            if (exito)
+            {
+                Debug.Log("[RE_NPCInteraction] ¡Bruteforce completado al 100%! Sumando progreso y mostrando pantalla de victoria...");
+
+                // 1. Sumar progreso de la recepcionista en RE_GameProgress (alcanza el 100%)
+                if (RE_GameProgress.Instance != null)
+                {
+                    RE_GameProgress.Instance.CompleteTask(npcId);
+                }
+
+                // 2. Disparar pantalla de victoria del nivel
+                if (RE_LevelComplete.Instance != null)
+                {
+                    RE_LevelComplete.Instance.TriggerLevelComplete();
+                }
+            }
+            else
+            {
+                Debug.Log("[RE_NPCInteraction] Minijuego Bruteforce cancelado o no superado. Habla con la Recepcionista para volver a intentar.");
+                RestaurarControlJugador();
+            }
+        });
+    }
+
+    private void RestaurarControlJugador()
+    {
         Cursor.lockState = CursorLockMode.Locked; 
         Cursor.visible = false; 
 
@@ -381,32 +482,19 @@ public class RE_NPCInteraction : MonoBehaviour, IInteractable
 
         RE_PlayerMovement pm = FindFirstObjectByType<RE_PlayerMovement>();
         if (pm != null) pm.enabled = true;
-
-        RegistrarProgresoNPC();
     }
 
     private void RegistrarProgresoNPC()
     {
         if (esNPCFacturacion)
         {
-            // Solo si ya hablo con los 3 NPCs previos, la recepcionista completa el nivel
+            // La recepcionista factura exclusivamente a traves de IniciarMinijuegoBruteforce()
             bool guardiaListo = RE_GameProgress.Instance != null && RE_GameProgress.Instance.IsGuardiaCompleted();
             bool civilListo = RE_GameProgress.Instance != null && RE_GameProgress.Instance.IsCivilCompleted();
             bool enfermeroListo = RE_GameProgress.Instance != null && RE_GameProgress.Instance.IsEnfermeroCompleted();
+            bool requisitosCumplidos = !requiereNPCsPrevios || (guardiaListo && civilListo && enfermeroListo) || (ActiveNPCs.Count <= 1);
 
-            if (puedeFacturar && guardiaListo && civilListo && enfermeroListo)
-            {
-                if (RE_GameProgress.Instance != null)
-                {
-                    RE_GameProgress.Instance.CompleteTask(npcId);
-                }
-
-                if (RE_LevelComplete.Instance != null)
-                {
-                    RE_LevelComplete.Instance.TriggerLevelComplete();
-                }
-            }
-            else
+            if (!puedeFacturar || !requisitosCumplidos)
             {
                 Debug.Log("[RE_NPCInteraction] Recepcionista: No se puede facturar hasta hablar con el Guardia, Civil y Enfermero.");
             }

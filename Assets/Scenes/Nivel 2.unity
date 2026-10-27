@@ -265,6 +265,7 @@ MonoBehaviour:
   interactableMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  minFacingDot: 0.2
   promptUIObject: {fileID: 0}
   promptUIText: {fileID: 0}
   mostrarIndicadorEnPantalla: 1
@@ -8842,7 +8843,7 @@ MonoBehaviour:
   m_fontAsset: {fileID: 11400000, guid: 9a14a8a1184c5f14fbce3338ea4d7a35, type: 2}
   m_sharedMaterial: {fileID: 1260715531048141648, guid: 9a14a8a1184c5f14fbce3338ea4d7a35, type: 2}
   m_fontSharedMaterials:
-  - {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  - {fileID: 1260715531048141648, guid: 9a14a8a1184c5f14fbce3338ea4d7a35, type: 2}
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
@@ -42396,7 +42397,8 @@ MonoBehaviour:
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2100000, guid: e73a58f6e2794ae7b1b7e50b7fb811b0, type: 2}
-  m_fontSharedMaterials: []
+  m_fontSharedMaterials:
+  - {fileID: 2100000, guid: e73a58f6e2794ae7b1b7e50b7fb811b0, type: 2}
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
@@ -42816,18 +42818,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   levelCompletePanel: {fileID: 1445797433}
-  timeText: {fileID: 0}
   tasksText: {fileID: 0}
   healthText: {fileID: 1587436963}
+  timeText: {fileID: 0}
   nextLevelButton: {fileID: 1164314077}
   restartButton: {fileID: 1008842715}
   mainMenuButton: {fileID: 725535762}
-  nextSceneName: Hospital_Level2
+  nextLevelSceneName: 
   mainMenuSceneName: MainMenu
   completeSFX: {fileID: 0}
   audioSource: {fileID: 0}
   completeParticles: {fileID: 0}
-  autoCompleteOn100Percent: 0
 --- !u!4 &1208076184
 Transform:
   m_ObjectHideFlags: 0
@@ -64911,7 +64912,7 @@ MonoBehaviour:
   m_fontAsset: {fileID: 11400000, guid: 9a14a8a1184c5f14fbce3338ea4d7a35, type: 2}
   m_sharedMaterial: {fileID: 1260715531048141648, guid: 9a14a8a1184c5f14fbce3338ea4d7a35, type: 2}
   m_fontSharedMaterials:
-  - {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  - {fileID: 1260715531048141648, guid: 9a14a8a1184c5f14fbce3338ea4d7a35, type: 2}
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:

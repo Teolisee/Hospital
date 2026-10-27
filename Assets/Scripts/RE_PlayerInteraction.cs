@@ -74,8 +74,9 @@ public class RE_PlayerInteraction : MonoBehaviour
             return;
         }
 
-        // Si hay algun dialogo abierto, ocultar avisos y suspender interaccion
-        if (RE_NPCInteraction.IsAnyDialogueOpen)
+        // Si hay algun dialogo abierto o el minijuego Bruteforce esta en ejecucion, ocultar avisos y suspender interaccion
+        bool minijuegoActivo = (BruteforceMinigame.Instance != null && BruteforceMinigame.Instance.IsRunning);
+        if (RE_NPCInteraction.IsAnyDialogueOpen || minijuegoActivo)
         {
             OcultarAvisos();
             return;
